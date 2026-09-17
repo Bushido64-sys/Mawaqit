@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-17 — PHASE 2 CODE COMPLETE, awaiting Codespaces build + phone test**
+> **Last updated: 2026-09-17 — PHASE 2 COMPLETE (5/5 phone checks passed). Next: Phase 3, pending user OK.**
 
 ---
 
@@ -14,11 +14,12 @@ Android prayer-times + alarm app (Kotlin, Compose, offline-first), built phase b
 from a detailed guidebook (`mawaqit-guidebook/`), with the user learning as we go.
 
 ## WHERE WE ARE RIGHT NOW
-**Phase 2 (prayer times) — code complete, not yet built or tested.** Phase 1 sealed 2026-09-17
-(5/5 phone checks passed). Phase 2 adds: Room DB (4 tables, ISO dates), AlAdhan monthly fetch
-(method=1/school=1, " (PKT)" suffix stripping), DataStore prefs, GPS helper, offline-first
-repository, and a TEMPORARY home screen (location buttons + times list + countdown).
-**PHASE_4 replaces that temp screen — don't judge the design yet.**
+**Phase 2 (prayer times) — COMPLETE and verified on device.** All 5 checks passed:
+Karachi times load ✓, times match aladhan.com (method 1, Hanafi) ✓, offline cache +
+"Cached data" banner ✓, GPS "Use My Location" ✓, live countdown ticks ✓.
+The app now: fetches the month once from AlAdhan → stores in Room (4 tables, ISO dates) →
+serves times offline-first. Temp home screen still in place (PHASE_4 replaces it).
+**Next: PHASE_3 (alarms) — only after the user gives an explicit go.**
 
 ---
 
@@ -27,7 +28,8 @@ repository, and a TEMPORARY home screen (location buttons + times list + countdo
 |---|---|---|
 | 0 | Guidebook written, reviewed, 11 doc issues fixed | ✅ done |
 | 1 | Skeleton: Gradle, manifest, resources, theme, Hilt app, MainActivity | ✅ COMPLETE — 5/5 phone checks passed 2026-09-17 |
-| 2 | Prayer times (AlAdhan API + Room + repository) | ✅ code done → **needs Codespaces build + phone test** |
+| 2 | Prayer times (AlAdhan API + Room + repository) | ✅ COMPLETE — 5/5 phone checks passed 2026-09-17 |
+| 3 | Alarms (AlarmReceiver, BootReceiver, AzanService) | 🔒 LOCKED — needs user's explicit OK to start |
 | 3 | Alarms (AlarmReceiver, BootReceiver, AzanService) | not started |
 | 4 | Home screen UI | not started |
 | 5 | Widget (Glance; lock-screen = opportunistic bonus) | not started |
@@ -82,16 +84,14 @@ repository, and a TEMPORARY home screen (location buttons + times list + countdo
 
 ## NEXT SESSION: DO THIS IN ORDER
 1. **Read this file top to bottom.** (You just did — good.)
-2. Phase 2 status: user should run `git pull` + `bash codespaces/build.sh`, install, and test
-   (checklist below). Help fix any build/runtime errors first.
-3. **Phase 2 test checklist (user's):** tap "Test with Karachi" → times appear; cross-check
-   Fajr/Asr against aladhan.com (Karachi, method 1, Hanafi); airplane-mode relaunch shows the
-   same times + "Cached data" banner; "Use My Location" (allow permission) shows local times.
-4. When user confirms all pass → mark Phase 2 complete, ask explicit OK, then start PHASE_3
-   (alarms — read PHASE_3_ALARMS.md + PERMISSIONS.md first).
-5. If anything fails: get the "What went wrong" box from build.sh output or the exact phone
+2. Phase 2 is DONE (see above). Ask the user whether to start **PHASE_3 (alarms)** —
+   the user must explicitly say go (their rule).
+3. If go: read `mawaqit-guidebook/PHASE_3_ALARMS.md` + `PERMISSIONS.md` fully before writing
+   code. Note: user's azan audio files (assignment/05) may be needed — check if they exist in
+   `app/src/main/res/raw/` first; if not, either ask the user or build with silent/log stubs.
+4. If anything fails: get the "What went wrong" box from build.sh output or the exact phone
    behavior, fix, commit (`[PHASE-N]` prefix), push, user rebuilds. One fix at a time.
-6. **Before ending any session:** update this file (status line, phases table, pending items).
+5. **Before ending any session:** update this file (status line, phases table, pending items).
 
 ## PHASE-2 IMPLEMENTATION NOTES (for future debugging)
 - New files: data/model/PrayerTimings.kt, data/api/Aladhan{Models,ApiService}.kt,
