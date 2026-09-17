@@ -27,8 +27,16 @@ jobs:
           cache: gradle
 
       # Step 3 — Set up Android SDK
+      # Explicit package list: the default input tries to install the retired
+      # 'tools' package ("Failed to find package 'tools'"). Our project uses
+      # compileSdk 34 / AGP 8.4.2 → build-tools 34.0.0.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platform-tools
+            platforms;android-34
+            build-tools;34.0.0
 
       # Step 4 — Grant Gradle execute permission
       - name: Grant Gradle execute permission
