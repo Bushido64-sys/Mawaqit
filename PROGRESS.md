@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-17**
+> **Last updated: 2026-09-17 (Codespaces build debugging: Java 25 zombie daemon)**
 
 ---
 
@@ -53,6 +53,12 @@ The APK build in GitHub Codespaces was just set up; user is building + testing N
 - **Every build is self-identifying:** `build.gradle.kts` reads `git rev-parse --short HEAD` and
   stamps it into `versionName` (`1.0.0-<sha>`), `BuildConfig.GIT_SHA` (shown on the app screen),
   and the APK filename (`Mawaqit-1.0.0-<sha>-debug.apk`, renamed by build.sh). NEVER remove this.
+- **Java 17 is MANDATORY for builds.** Codespace default JDK is 25, which Kotlin 1.9.24 cannot
+  parse (`IllegalArgumentException: 25.0.4.1` at config phase). setup.sh installs Temurin 17 to
+  `~/jdks` if none exists; build.sh verifies `java -version` = 17 and refuses otherwise.
+- **Kill Gradle daemons before every build** (`./gradlew --stop` + `--no-daemon`): a stale daemon
+  born with Java 25 gets reused even after Java 17 is active, reproducing the crash. One-shot
+  `--no-daemon` builds trade ~30s for determinism. Don't "optimize" this away.
 - **Theme:** light-only M3, gold = primary (CTAs), blue = secondary — derived from
   `design_tokens.xml` + `DESIGN.md`, not copied (tokens file has no Kotlin sections).
 - **MainActivity is AppCompatActivity** (not ComponentActivity) for per-app language switching later.

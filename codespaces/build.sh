@@ -49,7 +49,17 @@ if ! java -version 2>&1 | grep -q 'version "17'; then
     exit 1
   fi
 fi
+echo "-- Script from commit: $(git rev-parse --short HEAD 2>/dev/null || echo dev)"
 echo "-- Building with: $(java -version 2>&1 | head -n1)"
+
+# ---------- 1b. KILL STALE GRADLE DAEMONS ----------
+# Gradle keeps a background helper ("daemon") alive between builds, and it
+# remembers the Java it was born with. The very first failed build created a
+# Java-25 daemon; even with Java 17 active, Gradle would happily reuse that
+# zombie and crash the same way. --stop evicts every daemon; --no-daemon then
+# runs this build in our own verified-Java-17 process. Deterministic > fast.
+echo "-- Evicting stale Gradle daemons (they remember old Java)..."
+./gradlew --stop >/dev/null 2>&1 || true
 
 # ---------- 2. SDK env (in case setup ran in another terminal) ----------
 SDK="${ANDROID_HOME:-$HOME/android-sdk}"
@@ -63,7 +73,7 @@ echo "=========================================="
 echo " Mawaqit — building debug APK..."
 echo "=========================================="
 LOG=/tmp/mawaqit-build.log
-if ./gradlew assembleDebug --stacktrace 2>&1 | tee "$LOG"; then
+if ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee "$LOG"; then
   echo ""
   echo "=========================================="
   echo " ✅ BUILD SUCCESSFUL"
