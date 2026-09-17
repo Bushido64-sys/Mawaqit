@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Spacing (8dp base unit) -->
+    <dimen name="space_xs">4dp</dimen>
+    <dimen name="space_sm">8dp</dimen>
+    <dimen name="space_md">16dp</dimen>
+    <dimen name="space_lg">24dp</dimen>
+    <dimen name="space_xl">32dp</dimen>
+
+    <!-- Shape -->
+    <dimen name="radius_card_lg">28dp</dimen>
+    <dimen name="radius_card_sm">18dp</dimen>
+    <dimen name="radius_sheet_top">24dp</dimen>
+    <dimen name="radius_input">16dp</dimen>
+    <!-- pill = height/2, apply as CircleShape / RoundedCornerShape(50) in Compose -->
+
+    <!-- Elevation — the kit is flat, no shadows (DESIGN.md §3) -->
+    <dimen name="elevation_default">0dp</dimen>
+
+    <!-- Type scale (sp) — consumed by ui/theme/Type.kt -->
+    <dimen name="type_hero">36sp</dimen>
+    <dimen name="type_display">28sp</dimen>
+    <dimen name="type_title">17sp</dimen>
+    <dimen name="type_card_title">15sp</dimen>
+    <dimen name="type_body">14sp</dimen>
+    <dimen name="type_caption">12sp</dimen>
+</resources>

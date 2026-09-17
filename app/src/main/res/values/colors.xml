@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand (design_tokens.xml — unchanged) -->
+    <color name="primary_gold">#E38F33</color>
+    <color name="primary_blue">#0C65A5</color>
+    <color name="bg_offwhite">#E3E9EE</color>
+
+    <!-- HaHo kit teardown tokens (DESIGN.md §1) -->
+    <color name="surface_deep">#0C2B45</color>
+    <color name="surface_white">#FFFFFF</color>
+    <color name="text_primary">#12181F</color>
+    <color name="text_muted">#5A6475</color>
+    <color name="chip_bg">#E8F2FB</color>
+    <color name="chip_text">#0C65A5</color>
+    <color name="success">#2E7D32</color>
+    <color name="error">#C62828</color>
+</resources>

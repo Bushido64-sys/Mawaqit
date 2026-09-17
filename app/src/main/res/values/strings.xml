@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Mawaqit</string>
+    <string name="app_tagline">Salah Time · Prayer Alarm Clock</string>
+
+    <!-- Prayer names -->
+    <string name="fajr">Fajr</string>
+    <string name="dhuhr">Dhuhr</string>
+    <string name="asr">Asr</string>
+    <string name="maghrib">Maghrib</string>
+    <string name="isha">Isha</string>
+
+    <!-- Home screen -->
+    <string name="next_prayer">Next Prayer</string>
+    <string name="remaining">remaining</string>
+    <string name="todays_prayers">Today\'s Prayers</string>
+    <string name="ayah_of_the_day">✦ Ayah of the Day</string>
+    <string name="alarm_is_on">Alarm is ON</string>
+    <string name="alarm_is_off">Alarm is OFF</string>
+    <string name="mark_as_prayed">Mark as Prayed</string>
+
+    <!-- Navigation -->
+    <string name="tab_home">Home</string>
+    <string name="tab_quran">Quran</string>
+    <string name="tab_qibla">Qibla</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Quran -->
+    <string name="al_quran">Al-Quran</string>
+    <string name="meccan">Meccan</string>
+    <string name="medinan">Medinan</string>
+    <string name="verses">Verses</string>
+    <string name="search_surah">Search Surah…</string>
+
+    <!-- Qibla -->
+    <string name="qibla_direction">Qibla Direction</string>
+    <string name="towards_mecca">° towards Mecca</string>
+    <string name="qibla_accuracy_tip">Point your phone flat for best accuracy</string>
+    <string name="qibla_calibration_tip">If the compass seems off, move your phone in a figure-8 pattern to calibrate.</string>
+
+    <!-- Settings -->
+    <string name="settings">Settings</string>
+    <string name="settings_prayer_alarms">Prayer Alarms</string>
+    <string name="settings_azan_sound">Azan Sound</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_location">Location</string>
+    <string name="settings_current_location">Current Location</string>
+    <string name="settings_calculation_method">Calculation Method</string>
+    <string name="settings_karachi_method">University of Islamic Sciences, Karachi</string>
+    <string name="settings_battery_optimization">Battery Optimization</string>
+    <string name="settings_battery_desc">For reliable Azan alarms, exclude Mawaqit from battery optimization.</string>
+    <string name="settings_fix_now">Fix Now</string>
+    <string name="settings_app_version">App Version</string>
+    <string name="settings_prayer_times_by">Prayer times provided by</string>
+    <string name="settings_aladhan">AlAdhan.com</string>
+    <!-- Azan options — NO madina entry: no such audio file in the MVP (RULES.md Rule 11) -->
+    <string name="azan_default">Default Azan</string>
+    <string name="azan_makkah">Makkah Azan</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Assalamu Alaikum</string>
+    <string name="onboarding_welcome_subtitle">Stay connected to your prayers with accurate Salah times and Azan alarms.</string>
+    <string name="onboarding_location_title">Allow Location Access</string>
+    <string name="onboarding_location_subtitle">Mawaqit uses your location to calculate accurate prayer times for your city.</string>
+    <string name="allow_location">Allow Location</string>
+    <string name="enter_city_manually">Enter City Manually</string>
+    <string name="enter_city_hint">e.g. Karachi</string>
+    <string name="next">Next →</string>
+    <string name="get_started">Get Started</string>
+
+    <!-- Errors -->
+    <string name="error_no_internet">Unable to load prayer times. Please connect to the internet.</string>
+    <string name="error_using_cached">Using cached prayer times</string>
+    <string name="error_content_unavailable">Content unavailable</string>
+    <string name="retry">Try Again</string>
+    <string name="loading">Loading…</string>
+</resources>

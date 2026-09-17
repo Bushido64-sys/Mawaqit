@@ -1,0 +1,39 @@
+# Built outputs
+/build
+/app/build
+*.apk
+*.aab
+*.ap_
+
+# Gradle
+.gradle/
+# NOTE: gradle-wrapper.jar is intentionally NOT ignored — the gradlew script
+# cannot run without it; excluding it breaks CI with
+# "ClassNotFoundException: org.gradle.wrapper.GradleWrapperMain".
+
+# Android Studio
+.idea/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+captures/
+
+# Local config (never commit these)
+local.properties
+keystore.properties
+*.keystore
+*.jks
+
+# Profiling
+*.hprof
+
+# Test results
+test-results/
+lint-results*
+
+# Kotlin
+*.class
+
+# Node (if any tooling added later)
+node_modules/

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">مواقیت</string>
+    <string name="app_tagline">نماز کا وقت · اذان الارم</string>
+
+    <string name="fajr">فجر</string>
+    <string name="dhuhr">ظہر</string>
+    <string name="asr">عصر</string>
+    <string name="maghrib">مغرب</string>
+    <string name="isha">عشاء</string>
+
+    <string name="next_prayer">اگلی نماز</string>
+    <string name="remaining">باقی</string>
+    <string name="todays_prayers">آج کی نمازیں</string>
+    <string name="ayah_of_the_day">✦ آج کی آیت</string>
+    <string name="alarm_is_on">الارم آن ہے</string>
+    <string name="alarm_is_off">الارم آف ہے</string>
+    <string name="mark_as_prayed">نماز پڑھ لی</string>
+
+    <string name="tab_home">ہوم</string>
+    <string name="tab_quran">قرآن</string>
+    <string name="tab_qibla">قبلہ</string>
+    <string name="tab_settings">ترتیبات</string>
+
+    <string name="al_quran">القرآن</string>
+    <string name="qibla_direction">قبلہ سمت</string>
+    <string name="settings">ترتیبات</string>
+
+    <string name="error_no_internet">نماز کے اوقات لوڈ نہیں ہو سکے۔ انٹرنیٹ کنکشن چیک کریں۔</string>
+    <string name="error_using_cached">محفوظ اوقات استعمال ہو رہے ہیں</string>
+    <string name="retry">دوبارہ کوشش کریں</string>
+    <string name="loading">لوڈ ہو رہا ہے…</string>
+
+    <string name="onboarding_welcome_title">السلام علیکم</string>
+    <string name="onboarding_welcome_subtitle">درست اوقات اور اذان الارم کے ساتھ اپنی نمازوں سے جڑے رہیں۔</string>
+    <string name="allow_location">لوکیشن کی اجازت دیں</string>
+    <string name="enter_city_manually">شہر کا نام درج کریں</string>
+    <string name="next">آگے →</string>
+    <string name="get_started">شروع کریں</string>
+</resources>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base app theme — minimal; Compose draws everything.
+         Parent must be Theme.AppCompat descendant: MainActivity extends AppCompatActivity
+         for per-app language switching (PHASE_8). -->
+    <style name="Theme.Mawaqit" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/bg_offwhite</item>
+        <item name="android:navigationBarColor">@color/bg_offwhite</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <!-- System splash theme (used before Compose attaches; core-splashscreen) -->
+    <style name="Theme.Mawaqit.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/primary_blue</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Mawaqit</item>
+    </style>
+</resources>

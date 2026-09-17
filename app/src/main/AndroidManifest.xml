@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Location — GPS-based prayer times and Qibla direction -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Exact Alarm — precise prayer alarm scheduling (Android 12+) -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <!-- Boot receiver — reschedule alarms after phone restart (Phase 3) -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Foreground service — Azan audio playback (Phase 3) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+    <!-- Notifications — Android 13+ requires explicit permission -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Vibration — alarm vibration -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Internet — AlAdhan + UmmahAPI calls -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Network state — offline detection -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Wake lock — keep CPU awake to fire alarm at exact time -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Battery optimization exemption prompt (Settings screen) -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <application
+        android:name=".MawaqitApplication"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Mawaqit"
+        android:forceDarkAllowed="false"
+        tools:targetApi="34">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Mawaqit.Splash"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Alarm receiver (Phase 3) — receiver class stub exists; receiver declared then -->
+        <!-- Boot receiver (Phase 3) -->
+        <!-- Azan foreground service (Phase 3) -->
+        <!-- Widget provider (Phase 5) — deferred: no functional AppWidgetProvider yet -->
+
+    </application>
+</manifest>

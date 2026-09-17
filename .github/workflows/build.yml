@@ -1,0 +1,70 @@
+name: Build Mawaqit APK
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:    # allows manual trigger from GitHub UI
+
+jobs:
+  build:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Step 1 — Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2 — Set up Java 17 (required by Android Gradle Plugin 8.x)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      # Step 3 — Set up Android SDK
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      # Step 4 — Grant Gradle execute permission
+      - name: Grant Gradle execute permission
+        run: chmod +x ./gradlew
+
+      # Step 5 — Cache Gradle dependencies
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # Step 6 — Build the debug APK
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2g -Dorg.gradle.daemon=false"
+
+      # Step 7 — Upload the APK as a downloadable artifact
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: mawaqit-debug-${{ github.run_number }}
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+      # Step 8 — Report build status
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "### Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Run: #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
