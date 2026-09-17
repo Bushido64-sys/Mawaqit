@@ -11,8 +11,12 @@
     <path
         android:fillColor="#FFFFFF"
         android:pathData="M47,75 L47,65 Q54,58 61,65 L61,75 Z" />
-    <rect android:fillColor="#FFFFFF"
-        android:x="42" android:y="15" android:width="4" android:height="8" />
-    <rect android:fillColor="#FFFFFF"
-        android:x="62" android:y="15" android:width="4" android:height="8" />
+    <!-- Minarets: rectangles drawn as paths (vector drawables have no <rect>).
+         Coordinates identical to the rects they replace: (x42,y15,w4,h8) / (x62,y15,w4,h8). -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,15 h4 v8 h-4 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M62,15 h4 v8 h-4 Z" />
 </vector>
