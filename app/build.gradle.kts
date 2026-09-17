@@ -1,8 +1,28 @@
+import java.io.ByteArrayOutputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
+}
+
+// ── Build stamp ──────────────────────────────────────────────────────────────
+// Every APK carries the exact commit it was built from, in three places:
+//   1. versionName            → "1.0.0-<sha>"
+//   2. the APK file name      → "Mawaqit-1.0.0-<sha>-debug.apk"
+//   3. the app's first screen → "Build: <sha>"
+// This is read automatically at build time — no placeholders to update by hand.
+val gitShortSha: String = try {
+    val out = ByteArrayOutputStream()
+    exec {
+        commandLine("git", "rev-parse", "--short", "HEAD")
+        standardOutput = out
+        isIgnoreExitValue = false
+    }
+    out.toString("UTF-8").trim()
+} catch (e: Exception) {
+    "dev" // building outside a git checkout (e.g. a plain zip download)
 }
 
 android {
@@ -14,12 +34,15 @@ android {
         minSdk          = 26
         targetSdk       = 34
         versionCode     = 1
-        versionName     = "1.0.0"
+        versionName     = "1.0.0-$gitShortSha"   // e.g. 1.0.0-e987c71
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // Exposed to Kotlin as BuildConfig.GIT_SHA (shown on the app screen)
+        buildConfigField("String", "GIT_SHA", "\"$gitShortSha\"")
     }
 
     buildTypes {
@@ -46,7 +69,8 @@ android {
     }
 
     buildFeatures {
-        compose = true
+        compose      = true
+        buildConfig  = true // needed for BuildConfig.GIT_SHA
     }
 
     composeOptions {
@@ -58,6 +82,10 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    // NOTE: the APK file name is not changed inside Gradle on purpose —
+    // that would require AGP internal APIs (fragile). codespaces/build.sh
+    // renames the finished APK to Mawaqit-1.0.0-<sha>-debug.apk instead.
 }
 
 dependencies {

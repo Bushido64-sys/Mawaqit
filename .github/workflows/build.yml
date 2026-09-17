@@ -1,11 +1,14 @@
 name: Build Mawaqit APK
 
+# ── CURRENT STRATEGY (Sept 2026) ─────────────────────────────────────────────
+# Day-to-day APK builds happen in GitHub CODESPACES instead (see
+# codespaces/setup.sh + codespaces/build.sh, and assignment/07 for the walkthrough).
+# Why: the SDK-setup action broke for everyone when Google retired the 'tools'
+# package, and build logs on Actions are unreadable without repo-owner login.
+# This workflow is kept for MANUAL runs only (Actions tab → Build Mawaqit APK →
+# Run workflow) — it works now that the SDK steps talk to sdkmanager directly.
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:    # allows manual trigger from GitHub UI
+  workflow_dispatch:    # manual trigger only — no auto-builds on push
 
 jobs:
   build:
@@ -105,13 +108,20 @@ jobs:
           retention-days: 3
           if-no-files-found: warn
 
-      # Step 7 — Upload the APK as a downloadable artifact
+      # Step 7 — Stamp the APK name with the commit, then upload it
+      - name: Stamp APK name
+        if: success()
+        run: |
+          SHA=$(git rev-parse --short HEAD || echo dev)
+          mv -f app/build/outputs/apk/debug/app-debug.apk \
+                app/build/outputs/apk/debug/Mawaqit-1.0.0-$SHA-debug.apk || true
+
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         if: success()
         with:
           name: mawaqit-debug-${{ github.run_number }}
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/*.apk
           retention-days: 14
 
       # Step 8 — Report build status
