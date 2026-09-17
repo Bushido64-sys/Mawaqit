@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-17 — Phase 1 phone test PASSING (splash + main screen verified on device)**
+> **Last updated: 2026-09-17 — PHASE 2 CODE COMPLETE, awaiting Codespaces build + phone test**
 
 ---
 
@@ -14,10 +14,11 @@ Android prayer-times + alarm app (Kotlin, Compose, offline-first), built phase b
 from a detailed guidebook (`mawaqit-guidebook/`), with the user learning as we go.
 
 ## WHERE WE ARE RIGHT NOW
-**Phase 1 (skeleton) — passing the phone test.** APK built in Codespaces, installed on the
-user's phone. Verified on device: blue splash ✓, "Mawaqit — Phase 1 Setup Complete" ✓,
-"Build: <sha>" stamp visible ✓, no crash ✓. Remaining: app-drawer entry + icon look (2 checks),
-then the user's explicit OK unlocks Phase 2.
+**Phase 2 (prayer times) — code complete, not yet built or tested.** Phase 1 sealed 2026-09-17
+(5/5 phone checks passed). Phase 2 adds: Room DB (4 tables, ISO dates), AlAdhan monthly fetch
+(method=1/school=1, " (PKT)" suffix stripping), DataStore prefs, GPS helper, offline-first
+repository, and a TEMPORARY home screen (location buttons + times list + countdown).
+**PHASE_4 replaces that temp screen — don't judge the design yet.**
 
 ---
 
@@ -25,8 +26,8 @@ then the user's explicit OK unlocks Phase 2.
 | Phase | What | Status |
 |---|---|---|
 | 0 | Guidebook written, reviewed, 11 doc issues fixed | ✅ done |
-| 1 | Skeleton: Gradle, manifest, resources, theme, Hilt app, MainActivity | ✅ APK built + installed; 3/5 phone checks confirmed 2026-09-17 (2 pending) |
-| 2 | Prayer times (AlAdhan API + Room + repository) | 🔒 LOCKED until Phase 1 passes phone test |
+| 1 | Skeleton: Gradle, manifest, resources, theme, Hilt app, MainActivity | ✅ COMPLETE — 5/5 phone checks passed 2026-09-17 |
+| 2 | Prayer times (AlAdhan API + Room + repository) | ✅ code done → **needs Codespaces build + phone test** |
 | 3 | Alarms (AlarmReceiver, BootReceiver, AzanService) | not started |
 | 4 | Home screen UI | not started |
 | 5 | Widget (Glance; lock-screen = opportunistic bonus) | not started |
@@ -81,14 +82,29 @@ then the user's explicit OK unlocks Phase 2.
 
 ## NEXT SESSION: DO THIS IN ORDER
 1. **Read this file top to bottom.** (You just did — good.)
-2. Phase 1 status: ask user to confirm the final 2 checks (app-drawer entry + icon look).
-   All builds now go through `codespaces/build.sh` (routine, ~1–2 min after the first).
-3. Once Phase 1 is sealed: **ask the user for explicit OK, then start Phase 2** — read
-   `mawaqit-guidebook/PHASE_2_PRAYER_TIMES.md` fully first; API contracts already verified in
-   `API_REFERENCE.md` (AlAdhan live ✓, UmmahAPI re-probed ✓ — endpoints corrected there).
-4. If anything fails: get the "What went wrong" box from build.sh output or the exact phone
+2. Phase 2 status: user should run `git pull` + `bash codespaces/build.sh`, install, and test
+   (checklist below). Help fix any build/runtime errors first.
+3. **Phase 2 test checklist (user's):** tap "Test with Karachi" → times appear; cross-check
+   Fajr/Asr against aladhan.com (Karachi, method 1, Hanafi); airplane-mode relaunch shows the
+   same times + "Cached data" banner; "Use My Location" (allow permission) shows local times.
+4. When user confirms all pass → mark Phase 2 complete, ask explicit OK, then start PHASE_3
+   (alarms — read PHASE_3_ALARMS.md + PERMISSIONS.md first).
+5. If anything fails: get the "What went wrong" box from build.sh output or the exact phone
    behavior, fix, commit (`[PHASE-N]` prefix), push, user rebuilds. One fix at a time.
-5. **Before ending any session:** update this file (status line, phases table, pending items).
+6. **Before ending any session:** update this file (status line, phases table, pending items).
+
+## PHASE-2 IMPLEMENTATION NOTES (for future debugging)
+- New files: data/model/PrayerTimings.kt, data/api/Aladhan{Models,ApiService}.kt,
+  data/db/{MawaqitEntities,MawaqitDatabase}.kt, data/prefs/PrefsRepository.kt,
+  data/repository/{PrayerRepository,PrayerRepositoryImpl}.kt, di/{NetworkModule,RepositoryModule}.kt,
+  util/{PrayerTimeUtils,LocationHelper}.kt, ui/home/{HomeScreen,HomeViewModel}.kt.
+  Modified: MainActivity (shows HomeScreen), AppModule (Room providers).
+- Cache logic: pref LAST_MONTH_FETCHED="YYYY-MM" + countForMonth>0 → skip API;
+  setLocation() clears BOTH (location change invalidates all rows).
+- Next prayer: today's remaining, else tomorrow's Fajr (approximated with today's Fajr time
+  on a month's last day — accepted MVP simplification).
+- Countdown uses device timezone mapping (see parseTimeToMillis note) — fine while device tz
+  == home tz (our audience).
 
 ## CONVENTIONS CHEAT SHEET
 - Commit messages: `[PHASE-N] Short description` (match `git log` style).
