@@ -58,11 +58,30 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # Step 6 — Build the debug APK
+      # Step 6 — Build the debug APK.
+      # tee captures full output; pipefail keeps the step failing on error.
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --stacktrace --no-daemon 2>&1 | tee build_output.log
         env:
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2g -Dorg.gradle.daemon=false"
+
+      # Step 6b — If the build failed, surface the real error lines as job
+      # annotations (readable via the API without admin log access).
+      - name: Report errors as annotations
+        if: failure()
+        run: |
+          if [ -f build_output.log ]; then
+            grep -nE "(^e: |error:|FAILURE:|What went wrong|Caused by:|A problem occurred|Could not|Exception is)" build_output.log \
+              | head -30 \
+              | while IFS= read -r line; do echo "::error::${line:0:500}"; done
+            tail -n 60 build_output.log > build_tail.txt
+            echo "### Build tail (last 60 lines)" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            cat build_tail.txt >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       # Step 7 — Upload the APK as a downloadable artifact
       - name: Upload APK Artifact
