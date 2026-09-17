@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-17 (Codespaces build debugging: Java 25 zombie daemon)**
+> **Last updated: 2026-09-17 — Phase 1 phone test PASSING (splash + main screen verified on device)**
 
 ---
 
@@ -14,8 +14,10 @@ Android prayer-times + alarm app (Kotlin, Compose, offline-first), built phase b
 from a detailed guidebook (`mawaqit-guidebook/`), with the user learning as we go.
 
 ## WHERE WE ARE RIGHT NOW
-**Phase 1 (project skeleton) — code complete, awaiting real-device test.**
-The APK build in GitHub Codespaces was just set up; user is building + testing NOW.
+**Phase 1 (skeleton) — passing the phone test.** APK built in Codespaces, installed on the
+user's phone. Verified on device: blue splash ✓, "Mawaqit — Phase 1 Setup Complete" ✓,
+"Build: <sha>" stamp visible ✓, no crash ✓. Remaining: app-drawer entry + icon look (2 checks),
+then the user's explicit OK unlocks Phase 2.
 
 ---
 
@@ -23,7 +25,7 @@ The APK build in GitHub Codespaces was just set up; user is building + testing N
 | Phase | What | Status |
 |---|---|---|
 | 0 | Guidebook written, reviewed, 11 doc issues fixed | ✅ done |
-| 1 | Skeleton: Gradle, manifest, resources, theme, Hilt app, MainActivity | ✅ code done → **phone test pending** |
+| 1 | Skeleton: Gradle, manifest, resources, theme, Hilt app, MainActivity | ✅ APK built + installed; 3/5 phone checks confirmed 2026-09-17 (2 pending) |
 | 2 | Prayer times (AlAdhan API + Room + repository) | 🔒 LOCKED until Phase 1 passes phone test |
 | 3 | Alarms (AlarmReceiver, BootReceiver, AzanService) | not started |
 | 4 | Home screen UI | not started |
@@ -70,21 +72,22 @@ The APK build in GitHub Codespaces was just set up; user is building + testing N
   (key works — the AI can push). Repo: `github.com/Bushido64-sys/Mawaqit` (branch: main).
 
 ## PENDING USER-SIDE ITEMS (tracked in `assignment/`)
-- [ ] **Build APK in Codespaces** (`assignment/07`) — user is doing this right now
-- [ ] **Phone test, 5 checks** (`assignment/03`) — Phase 1's exit gate
+- [x] **Build APK in Codespaces** (`assignment/07`) — DONE 2026-09-17 after 3 build fixes
+      (Java 25→17, daemon eviction, icon XML). The pipeline works; rebuilding is now routine.
+- [~] **Phone test, 5 checks** (`assignment/03`) — 3/5 confirmed; 2 left: app-drawer entry +
+      icon look (blue square, white mosque).
 - [ ] Compress splash video to ≤4MB → `app/src/main/res/raw/splash_video.mp4` (needed by Phase 9 only)
 - [ ] Azan audio: 3 files, ≤3MB each (`assignment/05`, needed by Phase 3)
 
 ## NEXT SESSION: DO THIS IN ORDER
 1. **Read this file top to bottom.** (You just did — good.)
-2. Ask the user for the phone-test result (5 checks in `assignment/03`) + the build ID
-   shown on the app screen (e.g. `Build: b19091d`).
-3. **If all 5 pass** → Phase 1 ✅. Update this file. THEN ask the user before starting Phase 2
-   (read `mawaqit-guidebook/PHASE_2_PRAYER_TIMES.md` fully first; the API contracts are already
-   verified in `API_REFERENCE.md`).
-4. **If any check fails / build failed** → get the "What went wrong" box from build.sh output or
-   the exact phone behavior, fix, commit (use `[PHASE-1]` prefix in commit messages), push,
-   and have the user rebuild. One fix at a time.
+2. Phase 1 status: ask user to confirm the final 2 checks (app-drawer entry + icon look).
+   All builds now go through `codespaces/build.sh` (routine, ~1–2 min after the first).
+3. Once Phase 1 is sealed: **ask the user for explicit OK, then start Phase 2** — read
+   `mawaqit-guidebook/PHASE_2_PRAYER_TIMES.md` fully first; API contracts already verified in
+   `API_REFERENCE.md` (AlAdhan live ✓, UmmahAPI re-probed ✓ — endpoints corrected there).
+4. If anything fails: get the "What went wrong" box from build.sh output or the exact phone
+   behavior, fix, commit (`[PHASE-N]` prefix), push, user rebuilds. One fix at a time.
 5. **Before ending any session:** update this file (status line, phases table, pending items).
 
 ## CONVENTIONS CHEAT SHEET
