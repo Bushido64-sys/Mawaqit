@@ -2,29 +2,63 @@
 # ============================================================
 # Mawaqit — Codespaces BUILD (run this every time you want an APK)
 #   bash codespaces/build.sh
-# At the end it prints the exact APK file name, which contains
-# the commit hash it was built from (e.g. Mawaqit-1.0.0-e987c71-debug.apk).
-# If the build fails, it prints the "What went wrong" section —
-# copy that and paste it into the chat.
+#
+# ⚠️ Refuses to build unless Java 17 is active — the codespace default
+# Java (25) crashes our Kotlin compiler. Run codespaces/setup.sh once
+# if this script says Java 17 is missing.
+#
+# On success: prints the APK path, named with the commit hash.
+# On failure: prints the "What went wrong" box — copy it into the chat.
 # ============================================================
 set -euo pipefail
 
 cd "$(dirname "$0")/.."   # always run from the repo root
 
-# make sure the environment is set up even if setup.sh ran in another terminal
+# ---------- helper: find a Java 17 (same logic as setup.sh) ----------
+find_java17() {
+  local d
+  for d in "$HOME"/jdks/*/; do
+    if [ -x "$d/bin/java" ] && "$d/bin/java" -version 2>&1 | grep -q 'version "17'; then
+      echo "${d%/}"; return 0
+    fi
+  done
+  if [ -d "$HOME/.sdkman/candidates/java" ]; then
+    for d in "$HOME"/.sdkman/candidates/java/17*/; do
+      if [ -x "$d/bin/java" ] && "$d/bin/java" -version 2>&1 | grep -q 'version "17'; then
+        echo "${d%/}"; return 0
+      fi
+    done
+  fi
+  for d in /usr/lib/jvm/java-17-openjdk-* /usr/lib/jvm/temurin-17-jdk-*; do
+    if [ -x "$d/bin/java" ] && "$d/bin/java" -version 2>&1 | grep -q 'version "17'; then
+      echo "$d"; return 0
+    fi
+  done
+  return 1
+}
+
+# ---------- 1. FORCE Java 17 ----------
+if ! java -version 2>&1 | grep -q 'version "17'; then
+  # current java is NOT 17 → switch to a discovered 17 (setup.sh installed one)
+  if JAVA17_HOME="$(find_java17)"; then
+    export JAVA_HOME="$JAVA17_HOME"
+    export PATH="$JAVA_HOME/bin:$PATH"
+  else
+    echo "❌ Java 17 not found on this machine."
+    echo "   Fix:  bash codespaces/setup.sh     (then run this script again)"
+    exit 1
+  fi
+fi
+echo "-- Building with: $(java -version 2>&1 | head -n1)"
+
+# ---------- 2. SDK env (in case setup ran in another terminal) ----------
 SDK="${ANDROID_HOME:-$HOME/android-sdk}"
 export ANDROID_HOME="$SDK"
 export PATH="$SDK/cmdline-tools/latest/bin:$SDK/platform-tools:$PATH"
-if [ -d "$HOME/.sdkman/candidates/java" ]; then
-  V17="$(ls "$HOME/.sdkman/candidates/java" 2>/dev/null | grep -E '^17\.' | head -n1 || true)"
-  if [ -n "$V17" ] && ! java -version 2>&1 | grep -q 'version "17'; then
-    export JAVA_HOME="$HOME/.sdkman/candidates/java/$V17"
-    export PATH="$JAVA_HOME/bin:$PATH"
-  fi
-fi
 
 chmod +x ./gradlew
 
+# ---------- 3. Build ----------
 echo "=========================================="
 echo " Mawaqit — building debug APK..."
 echo "=========================================="
@@ -56,7 +90,6 @@ else
   echo "=========================================="
   echo " ❌ BUILD FAILED — here is the important part"
   echo "=========================================="
-  # Gradle prints failures under "What went wrong" / "FAILURE:"
   grep -n -A 20 "What went wrong" "$LOG" | head -60 || true
   grep -nE "^e: |error:|Caused by:" "$LOG" | head -30 || true
   echo ""
