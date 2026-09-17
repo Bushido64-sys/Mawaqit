@@ -26,17 +26,22 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      # Step 3 — Set up Android SDK
-      # Explicit package list: the default input tries to install the retired
-      # 'tools' package ("Failed to find package 'tools'"). Our project uses
-      # compileSdk 34 / AGP 8.4.2 → build-tools 34.0.0.
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: |
-            platform-tools
-            platforms;android-34
-            build-tools;34.0.0
+      # Step 3 — Android SDK.
+      # We deliberately do NOT use android-actions/setup-android here: as of
+      # Sept 2026 its default package set includes the retired 'tools' package
+      # (google stopped serving it — issues #537/#538), which fails the job.
+      # GitHub's ubuntu runners already ship the SDK at $ANDROID_HOME, so we
+      # accept licenses and install exactly what our project needs ourselves.
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      - name: Install Android SDK packages
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0" > /dev/null
+          sdkmanager --list_installed 2>/dev/null | head -20 || true
 
       # Step 4 — Grant Gradle execute permission
       - name: Grant Gradle execute permission
