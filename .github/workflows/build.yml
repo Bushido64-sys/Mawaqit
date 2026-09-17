@@ -72,16 +72,38 @@ jobs:
       - name: Report errors as annotations
         if: failure()
         run: |
+          echo "=== reporter debug: workspace ==="
+          ls -la
           if [ -f build_output.log ]; then
-            grep -nE "(^e: |error:|FAILURE:|What went wrong|Caused by:|A problem occurred|Could not|Exception is)" build_output.log \
-              | head -30 \
-              | while IFS= read -r line; do echo "::error::${line:0:500}"; done
-            tail -n 60 build_output.log > build_tail.txt
-            echo "### Build tail (last 60 lines)" >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-            cat build_tail.txt >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "log exists, $(wc -l < build_output.log) lines"
+            grep -E "FAILURE:|What went wrong|Caused by:|error:|^e: |A problem occurred|Could not|Exception is" build_output.log \
+              | head -20 > errors.txt || true
+            echo "=== matched error lines ==="
+            cat errors.txt
+            n=0
+            while IFS= read -r line; do
+              n=$((n+1))
+              echo "::error title=gradle-error-$n::${line:0:400}"
+            done < errors.txt
+            {
+              echo "### Build tail (last 80 lines)"
+              echo '```'
+              tail -n 80 build_output.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error::build_output.log missing - build failed before tee"
           fi
+
+      # Step 6c — raw build log as an artifact (downloadable from the run page)
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ github.run_number }}
+          path: build_output.log
+          retention-days: 3
+          if-no-files-found: warn
 
       # Step 7 — Upload the APK as a downloadable artifact
       - name: Upload APK Artifact
