@@ -77,21 +77,33 @@ serves times offline-first. Temp home screen still in place (PHASE_4 replaces it
 ## PENDING USER-SIDE ITEMS (tracked in `assignment/`)
 - [x] **Build APK in Codespaces** (`assignment/07`) — DONE 2026-09-17 after 3 build fixes
       (Java 25→17, daemon eviction, icon XML). The pipeline works; rebuilding is now routine.
-- [~] **Phone test, 5 checks** (`assignment/03`) — 3/5 confirmed; 2 left: app-drawer entry +
-      icon look (blue square, white mosque).
+- [~] **Phone test, 5 checks** (`assignment/03`) — DONE for both phases (Phase 1 & Phase 2 all 5/5).
+- [ ] **Azan audio: 3 files, ≤3MB each** (`assignment/05`) — NOW RELEVANT: Phase 3's dependency.
+      Decide at next session start: stub audio first, or wait for real files.
 - [ ] Compress splash video to ≤4MB → `app/src/main/res/raw/splash_video.mp4` (needed by Phase 9 only)
-- [ ] Azan audio: 3 files, ≤3MB each (`assignment/05`, needed by Phase 3)
 
 ## NEXT SESSION: DO THIS IN ORDER
 1. **Read this file top to bottom.** (You just did — good.)
-2. Phase 2 is DONE (see above). Ask the user whether to start **PHASE_3 (alarms)** —
-   the user must explicitly say go (their rule).
-3. If go: read `mawaqit-guidebook/PHASE_3_ALARMS.md` + `PERMISSIONS.md` fully before writing
-   code. Note: user's azan audio files (assignment/05) may be needed — check if they exist in
-   `app/src/main/res/raw/` first; if not, either ask the user or build with silent/log stubs.
-4. If anything fails: get the "What went wrong" box from build.sh output or the exact phone
+2. User has already confirmed: **start PHASE_3 (alarms) this session.** Read
+   `mawaqit-guidebook/PHASE_3_ALARMS.md` + `PERMISSIONS.md` fully before writing code.
+3. Ask the user ONE question first: build with **silent stub audio** (they add the 3 azan
+   MP3s later, then one rebuild) or **wait for real audio files** in `app/src/main/res/raw/`
+   (azan_default/fajr/makkah.mp3, ≤3MB each — see assignment/05).
+4. Build Phase 3 exactly per the guidebook (AlarmReceiver, BootReceiver rescheduling,
+   AzanService foreground audio). Reuse NextPrayer.timeMillis from Phase 2 for scheduling.
+5. If anything fails: get the "What went wrong" box from build.sh output or the exact phone
    behavior, fix, commit (`[PHASE-N]` prefix), push, user rebuilds. One fix at a time.
-5. **Before ending any session:** update this file (status line, phases table, pending items).
+6. **Before ending any session:** update this file (status line, phases table, pending items).
+
+## SESSION LOG (one line per working session, newest last)
+- **2026-09-17 — Session 1:** Docs patched (11 issues + live API verification). Phase 1 built
+  and phone-tested 5/5. Codespaces pipeline established after GitHub Actions broke repo-wide
+  (fixes: Java 25→17 forced, daemon eviction + --no-daemon, icon <rect>/dp fixes). PROGRESS.md
+  created; commit-stamped builds live.
+- **2026-09-17 — Session 2:** Phase 2 built and phone-tested 5/5 (Karachi fetch, aladhan.com
+  cross-check, offline cache + banner, GPS, live countdown). One compile fix (Modifier import).
+  ~17 files: Room (4 tables, ISO), AlAdhan Retrofit, DataStore prefs, GPS helper, offline-first
+  repo, temp HomeScreen. Paused with user's OK — **Phase 3 next.**
 
 ## PHASE-2 IMPLEMENTATION NOTES (for future debugging)
 - New files: data/model/PrayerTimings.kt, data/api/Aladhan{Models,ApiService}.kt,
