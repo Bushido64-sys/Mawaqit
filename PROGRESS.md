@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-18 — PHASE 3 ✅ 6/6. [PHASE-3.1] + [PHASE-3.2] pushed (7-day plan, housekeeping, diagnostics, MY_PACKAGE_REPLACED removal). Rebuild → re-test → Phase 4.**
+> **Last updated: 2026-09-19 — PHASE 3 ✅ FULLY CLOSED. [PHASE-3.2] diagnostics phone-tested: Test azan fires ~10s, Re-arm arms 35 alarms (7d × 5 prayers) — GAP-1 fix verified live. Phase 4 (home screen UI) next.**
 
 ---
 
@@ -82,8 +82,10 @@ safe, wakelock handoff, START_NOT_STICKY. Gaps found, mapped to phases:
 - **GAP-5 (LOW) — cosmetic:** placeholder notification icon → real art in Phase 4/9;
   month-edge next-Fajr approximation → Phase 4 polish.
 
-**Next: user rebuilds (codespaces/build.sh) → installs → taps "Test azan in 10s"
-+ "Re-arm alarms" → explicit OK → PHASE 4.**
+**Diagnostics PASSED (user, 2026-09-19): "Test azan in 10s" fired the full real
+chain (notification popped ~10s after tap); "Re-arm alarms" armed 35 alarms =
+7 days × 5 prayers — the GAP-1 7-day fix VERIFIED LIVE on device. GAP-1 + GAP-2
+confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
 
 ---
 
@@ -182,7 +184,11 @@ safe, wakelock handoff, START_NOT_STICKY. Gaps found, mapped to phases:
   Then [PHASE-3.2]: user's reboot+clock test fired 1 min late (5:04 vs 5:03) —
   diagnosed post-boot congestion, chain INTACT (reboot survival confirmed);
   MY_PACKAGE_REPLACED registration removed (not exempt per Android docs);
-  temp diagnostics (test azan / re-arm) added. Rebuild + re-test pending.
+  temp diagnostics (test azan / re-arm) added.
+- **2026-09-19 — Session 5:** [PHASE-3.2] diagnostics phone-tested and PASSED
+  (Test azan in 10s ✓; Re-arm = 35 alarms = 7d × 5 prayers ✓). Phase 3 FULLY
+  CLOSED. ponytail (minimal-code) skill installed at .agents/skills/ + auto-load
+  line added to guidebook AGENTS.md boot ritual. **Next: Phase 4 (home screen UI).**
 
 ## PHASE-2 IMPLEMENTATION NOTES (for future debugging)
 - New files: data/model/PrayerTimings.kt, data/api/Aladhan{Models,ApiService}.kt,
