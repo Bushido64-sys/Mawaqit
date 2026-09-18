@@ -26,6 +26,13 @@
     <string name="temp_alarm_toggles_title">Alarm toggles (temporary test UI)</string>
     <string name="notif_rationale">Allow notifications so the Azan alert can appear</string>
 
+    <!-- Home screen (PHASE_4) -->
+    <string name="current_prayer_hint">Current prayer</string>
+    <string name="test_with_karachi">Test with Karachi</string>
+    <string name="coming_in_phase">Arrives in Phase %1$d</string>
+    <string name="content_desc_marked_prayed">Marked as prayed</string>
+    <string name="content_desc_not_prayed">Not yet prayed</string>
+
     <!-- Navigation -->
     <string name="tab_home">Home</string>
     <string name="tab_quran">Quran</string>
@@ -77,6 +84,7 @@
 
     <!-- Errors -->
     <string name="error_no_internet">Unable to load prayer times. Please connect to the internet.</string>
+    <string name="error_no_location">Couldn\'t get a GPS fix. Turn location on and retry, or use Test with Karachi.</string>
     <string name="error_using_cached">Using cached prayer times</string>
     <string name="error_content_unavailable">Content unavailable</string>
     <string name="retry">Try Again</string>

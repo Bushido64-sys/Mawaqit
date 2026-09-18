@@ -8,15 +8,19 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mawaqit.app.alarm.AlarmRefreshManager
+import com.mawaqit.app.data.model.DailyAyah
 import com.mawaqit.app.data.model.NextPrayer
 import com.mawaqit.app.data.model.PrayerName
 import com.mawaqit.app.data.model.PrayerTimings
 import com.mawaqit.app.data.prefs.PrefsRepository
+import com.mawaqit.app.data.repository.AyahRepository
+import com.mawaqit.app.data.repository.SalahRepository
 import com.mawaqit.app.data.repository.PrayerRepository
 import com.mawaqit.app.util.LocationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,26 +29,31 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * PHASE_2 temporary state holder — PHASE_4 replaces the UI with the real design.
- * PHASE_3 adds: alarm toggle states (for the TEMP test switches) and alarm
- * scheduling whenever today's times load. PHASE-3.1 switches scheduling to
- * AlarmRefreshManager (7-day plan from the offline cache).
+ * PHASE_4: the real home screen state (PHASE_2/3 temp state holder replaced).
+ * Owns: prayer times + next prayer, live countdown tick, salah checkmarks
+ * (salah_log via SalahRepository), alarm toggles, daily ayah, location setup.
+ * The PHASE-3.2 diagnostics (re-arm/test buttons, diagMessage) are gone —
+ * they were temporary.
  */
 data class HomeUiState(
-    val needsLocation: Boolean = true,   // no saved coords yet → show buttons
-    val isLoading: Boolean = false,
+    val needsLocation: Boolean = true,   // no saved coords yet → show setup
+    val isLoading: Boolean = true,
     val timings: PrayerTimings? = null,
     val nextPrayer: NextPrayer? = null,
     val cityName: String? = null,
-    val fromCache: Boolean = false,      // true → show "Cached data" banner
+    val fromCache: Boolean = false,      // true → "cached data" banner
     val error: String? = null,
-    val alarmStates: Map<PrayerName, Boolean> = emptyMap(), // PHASE_3 temp test UI
-    val diagMessage: String? = null                         // PHASE-3.2 temp diagnostics
+    val salahLog: Map<PrayerName, Boolean> = emptyMap(),   // prayed checkmarks
+    val alarmStates: Map<PrayerName, Boolean> = emptyMap(),// per-prayer alarm switches
+    val dailyAyah: DailyAyah? = null,
+    val nowMillis: Long = System.currentTimeMillis()       // 1s ticker for countdown
 )
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: PrayerRepository,
+    private val salahRepository: SalahRepository,
+    private val ayahRepository: AyahRepository,
     private val locationHelper: LocationHelper,
     private val prefs: PrefsRepository,
     private val refreshManager: AlarmRefreshManager,
@@ -54,6 +63,8 @@ class HomeViewModel @Inject constructor(
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
 
+    private var loadedDate: String? = null   // ISO day the current times belong to
+
     init {
         viewModelScope.launch {
             repository.cityName().collect { city ->
@@ -61,15 +72,41 @@ class HomeViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            if (repository.hasSavedLocation()) loadTimes()
+            if (repository.hasSavedLocation()) {
+                loadTimes()
+            } else {
+                _state.update { it.copy(isLoading = false) } // show setup buttons
+            }
         }
         observeAlarmToggles()
+        observeSalahLog()
+        loadDailyAyah()
+        startTicker()
+        viewModelScope.launch { salahRepository.cleanupOldEntries() } // keep 30 days
     }
+
+    // ── countdown ticker + midnight rollover ────────────────────────────────
+
+    private fun startTicker() {
+        viewModelScope.launch {
+            while (true) {
+                _state.update { it.copy(nowMillis = System.currentTimeMillis()) }
+                val today = java.time.LocalDate.now().toString()
+                if (today != loadedDate && loadedDate != null) {
+                    loadTimes() // day changed → fetch today's row, re-arm alarms
+                    observeSalahLogForToday()
+                }
+                delay(1000)
+            }
+        }
+    }
+
+    // ── location setup ──────────────────────────────────────────────────────
 
     /** "Use My Location" — GPS fix, save, load. Permission is checked in the UI. */
     fun useMyLocation() {
         if (!hasLocationPermission()) {
-            _state.update { it.copy(error = "Location permission not granted yet.") }
+            _state.update { it.copy(error = appContext.getString(com.mawaqit.app.R.string.error_no_location)) }
             return
         }
         viewModelScope.launch {
@@ -79,7 +116,7 @@ class HomeViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         isLoading = false,
-                        error = "Couldn't get a GPS fix. Turn location on and retry, or use Test Karachi."
+                        error = appContext.getString(com.mawaqit.app.R.string.error_no_location)
                     )
                 }
             } else {
@@ -89,20 +126,52 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /** "Test with Karachi" — fixed coords so times can be verified against aladhan.com. */
+    /** Fixed Karachi coords so times can be verified against aladhan.com. */
     fun testKarachi() {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
-            repository.setLocation(24.8607, 67.0011, cityName = "Karachi (test)")
+            repository.setLocation(24.8607, 67.0011, cityName = "Karachi")
             loadTimes()
         }
     }
 
     fun clearError() = _state.update { it.copy(error = null) }
 
-    // ── PHASE_3: alarms ─────────────────────────────────────────────────────
+    // ── salah checkmarks (the feature Phase 3's notification wrote into) ────
 
-    /** Live per-prayer toggle states for the TEMP test switches. */
+    fun markPrayed(prayer: PrayerName, prayed: Boolean) {
+        viewModelScope.launch {
+            salahRepository.markPrayed(prayer, prayed)
+        }
+    }
+
+    private var salahLogJob: kotlinx.coroutines.Job? = null
+
+    private fun observeSalahLog() {
+        observeSalahLogForToday()
+    }
+
+    private fun observeSalahLogForToday() {
+        salahLogJob?.cancel()
+        val today = java.time.LocalDate.now().toString()
+        salahLogJob = viewModelScope.launch {
+            salahRepository.getSalahLogForDate(today).collect { rows ->
+                val map = LinkedHashMap<PrayerName, Boolean>()
+                rows.forEach { row ->
+                    val name = try {
+                        PrayerName.valueOf(row.prayer)
+                    } catch (_: IllegalArgumentException) {
+                        null
+                    }
+                    if (name != null && row.prayed) map[name] = true
+                }
+                _state.update { it.copy(salahLog = map) }
+            }
+        }
+    }
+
+    // ── alarm toggles (same behavior as the Phase 3 test switches) ──────────
+
     private fun observeAlarmToggles() {
         viewModelScope.launch {
             val flows = PrayerName.entries.map { prefs.alarmEnabledFlow(it) }
@@ -118,12 +187,7 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /**
-     * TEMP test-UI switch: save the pref, then rebuild the whole alarm plan.
-     * refreshAlarmsFromCache handles both directions — disabled prayers are
-     * left out of the plan (and their stale alarms cancelled), enabled ones
-     * are armed for the next 7 days.
-     */
+    /** Save the pref, then rebuild the whole 7-day alarm plan (arms + cancels). */
     fun toggleAlarm(prayer: PrayerName, enabled: Boolean) {
         viewModelScope.launch {
             prefs.setAlarmEnabled(prayer, enabled)
@@ -131,23 +195,16 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    // ── PHASE-3.2: temp diagnostics (removed in PHASE_4) ───────────────────
+    // ── daily ayah ──────────────────────────────────────────────────────────
 
-    /** Rebuild + re-apply the 7-day plan from cache; report the count. */
-    fun rearmAlarms() {
+    private fun loadDailyAyah() {
         viewModelScope.launch {
-            val count = refreshManager.refreshAlarmsFromCache()
-            _state.update { it.copy(diagMessage = "$count alarm(s) armed for the next 7 days.") }
+            val ayah = ayahRepository.getDailyAyah()
+            _state.update { it.copy(dailyAyah = ayah) }
         }
     }
 
-    /** Fire the full real azan chain in ~10 seconds (notification + audio). */
-    fun fireTestAlarm() {
-        refreshManager.fireTestAlarm()
-        _state.update { it.copy(diagMessage = "Test alarm armed — azan notification in ~10 seconds.") }
-    }
-
-    fun clearDiagMessage() = _state.update { it.copy(diagMessage = null) }
+    // ── notification permission (kept from Phase 3 — still needed) ──────────
 
     /**
      * True when the azan notification banner can't show (Android 13+ and the
@@ -164,7 +221,7 @@ class HomeViewModel @Inject constructor(
     /**
      * Loads today's times: refresh month from API if needed, then read the DB.
      * fromCache=true when the API fetch failed but the DB still has data
-     * (offline-first behavior, Rule 8). On success → schedule today's alarms.
+     * (offline-first behavior, Rule 8). On success → re-arm the alarm plan.
      */
     private suspend fun loadTimes() {
         _state.update { it.copy(isLoading = true, error = null) }
@@ -174,8 +231,9 @@ class HomeViewModel @Inject constructor(
             timings == null && !fetched ->
                 _state.update { it.copy(isLoading = false, needsLocation = true) }
             timings == null && fetched ->
-                _state.update { it.copy(isLoading = false, error = "Fetched month but no row for today.") }
+                _state.update { it.copy(isLoading = false) }
             else -> {
+                loadedDate = timings?.date
                 val next = timings?.let { repository.getNextPrayer(it) }
                 _state.update {
                     it.copy(
@@ -186,10 +244,7 @@ class HomeViewModel @Inject constructor(
                         fromCache = !fetched
                     )
                 }
-                // PHASE_3: every app open re-arms the alarms. PHASE-3.1: the
-                // plan now covers the next 7 days from the offline cache
-                // (GAP-1) — one missed app-open day can no longer silence
-                // tomorrow's Fajr. Network is NOT touched here.
+                // Every app open re-arms the 7-day plan from the offline cache.
                 refreshManager.refreshAlarmsFromCache()
             }
         }

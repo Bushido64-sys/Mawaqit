@@ -62,7 +62,7 @@ object AzanServiceUi {
         )
 
         return NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm) // placeholder vector until PHASE_4/9 art
+            .setSmallIcon(R.drawable.ic_azan) // white mosque vector (PHASE_4)
             .setContentTitle(context.getString(R.string.azan_notification_title, prayerLabel))
             .setContentText(context.getString(R.string.azan_notification_body))
             .setPriority(NotificationCompat.PRIORITY_HIGH)

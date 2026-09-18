@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.mawaqit.app.data.model.DailyAyah
 import com.mawaqit.app.data.model.PrayerName
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -156,6 +157,29 @@ class PrefsRepository @Inject constructor(
         store.edit {
             it[stringPreferencesKey(PrefKeys.SELECTED_AZAN)] =
                 if (option == AzanOption.MAKKAH) "makkah" else "default"
+        }
+    }
+
+    // ── Daily Ayah cache (PHASE_4; UmmahAPI source arrives in PHASE_6) ─────
+
+    /** (ayah, fetchDate ISO) or null when nothing cached yet. */
+    suspend fun getDailyAyahOnce(): Pair<DailyAyah, String>? {
+        val p = store.data.first()
+        val arabic = p[stringPreferencesKey(PrefKeys.DAILY_AYAH_TEXT_AR)] ?: return null
+        val english = p[stringPreferencesKey(PrefKeys.DAILY_AYAH_TEXT_EN)] ?: return null
+        val reference = p[stringPreferencesKey(PrefKeys.DAILY_AYAH_REFERENCE)] ?: return null
+        val date = p[stringPreferencesKey(PrefKeys.DAILY_AYAH_FETCH_DATE)] ?: return null
+        val urdu = p[stringPreferencesKey(PrefKeys.DAILY_AYAH_TEXT_UR)] ?: ""
+        return DailyAyah(arabic, english, urdu, reference) to date
+    }
+
+    suspend fun setDailyAyah(ayah: DailyAyah, dateIso: String) {
+        store.edit {
+            it[stringPreferencesKey(PrefKeys.DAILY_AYAH_TEXT_AR)] = ayah.arabic
+            it[stringPreferencesKey(PrefKeys.DAILY_AYAH_TEXT_EN)] = ayah.english
+            it[stringPreferencesKey(PrefKeys.DAILY_AYAH_TEXT_UR)] = ayah.urdu
+            it[stringPreferencesKey(PrefKeys.DAILY_AYAH_REFERENCE)] = ayah.reference
+            it[stringPreferencesKey(PrefKeys.DAILY_AYAH_FETCH_DATE)] = dateIso
         }
     }
 

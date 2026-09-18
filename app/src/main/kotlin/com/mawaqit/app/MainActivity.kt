@@ -8,7 +8,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.mawaqit.app.ui.home.HomeScreen
+import androidx.navigation.compose.rememberNavController
+import com.mawaqit.app.ui.MawaqitNavGraph
 import com.mawaqit.app.ui.theme.MawaqitTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -25,9 +26,8 @@ class MainActivity : AppCompatActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // PHASE_2: temp screen proving the data pipeline.
-                    // Navigation graph arrives in PHASE_4.
-                    HomeScreen()
+                    // PHASE_4: bottom-nav graph (Home / Quran / Qibla / Settings).
+                    MawaqitNavGraph(rememberNavController())
                 }
             }
         }
