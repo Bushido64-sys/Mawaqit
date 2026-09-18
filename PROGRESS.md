@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-19 — PHASE 3 ✅ FULLY CLOSED. [PHASE-3.2] diagnostics phone-tested: Test azan fires ~10s, Re-arm arms 35 alarms (7d × 5 prayers) — GAP-1 fix verified live. Phase 4 (home screen UI) next.**
+> **Last updated: 2026-09-19 — [PHASE-4] CODE COMPLETE (commit 5303560): real home screen (hero card, salah checkmarks, daily ayah, bottom nav); temp test UI removed. Codespaces build + phone test pending.**
 
 ---
 
@@ -96,7 +96,7 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
 | 1 | Skeleton: Gradle, manifest, resources, theme, Hilt app, MainActivity | ✅ COMPLETE — 5/5 phone checks passed 2026-09-17 |
 | 2 | Prayer times (AlAdhan API + Room + repository) | ✅ COMPLETE — 5/5 phone checks passed 2026-09-17 |
 | 3 | Alarms (AlarmReceiver, BootReceiver, AzanService) | ✅ PASSED — phone test 6/6 on 2026-09-18 (silent stubs; 5-min dismiss verified in code) |
-| 4 | Home screen UI | not started |
+| 4 | Home screen UI | 🚧 CODE COMPLETE 2026-09-19 (commit 5303560) — needs build + phone test |
 | 5 | Widget (Glance; lock-screen = opportunistic bonus) | not started |
 | 6 | Quran (UmmahAPI — endpoints re-verified live in Sept 2026) | not started |
 | 7 | Qibla | not started |
@@ -153,12 +153,15 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
 2. Ask user for the build result: `codespaces/build.sh` output (APK name or the
    "What went wrong" box) or the exact phone behavior. One fix at a time,
    commit `[PHASE-3]`, push, user rebuilds.
-3. Build is green → APK on phone → run the 7 Phase-3 checks (PHASE_3_ALARMS.md
-   "PHASE 3 COMPLETE WHEN" checklist). Silent audio means: verify by SEEING the
-   notification appear at prayer time and disappear after 5 min / Mark-as-Prayed.
-4. Phase 3 passes → user gives explicit OK → PHASE_4 (home screen UI) next.
-   NOTE for Phase 4: remove the two TEMP helpers from HomeScreen (switches +
-   notif popup) and replace the placeholder notification icon.
+3. Build is green → APK on phone → run the PHASE_4_HOME_SCREEN.md "PHASE 4
+   COMPLETE WHEN" checks: layout matches DESIGN.md, countdown ticks every second,
+   tapping a prayer marks it (green check persists across app restart), daily
+   ayah shows Arabic + translation, bottom nav switches all 4 tabs, offline
+   banner when no internet, alarm toggles persist. REGRESSION: alarms still fire
+   at prayer time (silent) — note the Test-azan button is GONE now (temp UI),
+   so use real prayer times or the clock trick.
+4. Phase 4 passes → user gives explicit OK → PHASE_5 (Glance widget) next.
+   Glance deps already in build.gradle.kts; read PHASE_5_WIDGET.md first.
 5. **Before ending any session:** update this file (status line, phases table, pending items).
 
 ## SESSION LOG (one line per working session, newest last)
@@ -189,6 +192,17 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
   (Test azan in 10s ✓; Re-arm = 35 alarms = 7d × 5 prayers ✓). Phase 3 FULLY
   CLOSED. ponytail (minimal-code) skill installed at .agents/skills/ + auto-load
   line added to guidebook AGENTS.md boot ritual. **Next: Phase 4 (home screen UI).**
+- **2026-09-19 — Session 6:** [PHASE-4] CODE COMPLETE (commit 5303560, 18 files,
+  +994/−229). Real home screen per DESIGN.md: NextPrayerCard hero (SurfaceDeep,
+  gold countdown ring), PrayerRow (tap = mark prayed → salah_log via new
+  SalahRepository; per-row alarm toggle), AyahCard (daily rotation of curated
+  FALLBACK_AYAHS — UmmahAPI deliberately deferred to Phase 6, offline-first),
+  MawaqitNavGraph floating pill (Quran/Qibla/Settings placeholders), DataStore
+  DAILY_AYAH_* cache keys, ic_azan white-mosque notification icon. HomeViewModel:
+  1s ticker + midnight rollover re-load, 30-day salah_log cleanup on start.
+  Temp Phase 2/3 test UI REMOVED (re-arm/test buttons, big switches); notif
+  permission request KEPT. AlarmRefreshManager.fireTestAlarm kept deliberately
+  for the Phase 8 Alarm Health card. **Next: user Codespaces build → phone test → Phase 5.**
 
 ## PHASE-2 IMPLEMENTATION NOTES (for future debugging)
 - New files: data/model/PrayerTimings.kt, data/api/Aladhan{Models,ApiService}.kt,
