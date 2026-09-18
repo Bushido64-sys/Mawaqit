@@ -19,6 +19,13 @@
     <string name="alarm_is_off">Alarm is OFF</string>
     <string name="mark_as_prayed">Mark as Prayed</string>
 
+    <!-- Alarms (PHASE_3) -->
+    <string name="alarm_channel_name">Prayer Alarms</string>
+    <string name="azan_notification_title">Azan — %1$s</string>
+    <string name="azan_notification_body">Time to pray. Tap to open Mawaqit.</string>
+    <string name="temp_alarm_toggles_title">Alarm toggles (temporary test UI)</string>
+    <string name="notif_rationale">Allow notifications so the Azan alert can appear</string>
+
     <!-- Navigation -->
     <string name="tab_home">Home</string>
     <string name="tab_quran">Quran</string>

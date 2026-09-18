@@ -57,9 +57,58 @@
             </intent-filter>
         </activity>
 
-        <!-- Alarm receiver (Phase 3) — receiver class stub exists; receiver declared then -->
-        <!-- Boot receiver (Phase 3) -->
-        <!-- Azan foreground service (Phase 3) -->
+        <!-- ── PHASE_3: alarm machinery ───────────────────────────────── -->
+
+        <!-- Alarm receiver — fires when AlarmManager triggers a prayer -->
+        <receiver
+            android:name=".alarm.AlarmReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.mawaqit.app.PRAYER_ALARM" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Boot receiver — reschedules all alarms after restart.
+             LOCKED_BOOT_COMPLETED is registered but ignored in code:
+             Room/DataStore (credential-encrypted) are unreadable pre-unlock
+             (see PERMISSIONS.md note and BootReceiver). -->
+        <receiver
+            android:name=".alarm.BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Mark-as-Prayed handler for the azan notification (explicit intent) -->
+        <receiver
+            android:name=".alarm.AzanReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <!-- Azan playback foreground service -->
+        <service
+            android:name=".alarm.AzanService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!-- WorkManager: disable the DEFAULT initializer so WorkManager uses
+             MawaqitApplication.workManagerConfiguration (HiltWorkerFactory).
+             Required by @HiltWorker classes; PERMISSIONS.md provider block. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
         <!-- Widget provider (Phase 5) — deferred: no functional AppWidgetProvider yet -->
 
     </application>

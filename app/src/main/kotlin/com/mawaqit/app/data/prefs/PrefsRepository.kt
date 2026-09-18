@@ -9,12 +9,16 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.mawaqit.app.data.model.PrayerName
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/** The Azan choice for the 4 non-Fajr prayers (Fajr is ALWAYS azan_fajr, Rule 14). */
+enum class AzanOption { DEFAULT, MAKKAH }
 
 /** All pref key names — exactly as listed in DATA_SCHEMA.md. */
 object PrefKeys {
@@ -103,4 +107,51 @@ class PrefsRepository @Inject constructor(
 
     suspend fun getLastMonthFetchedOnce(): String? =
         store.data.first()[stringPreferencesKey(PrefKeys.LAST_MONTH_FETCHED)]
+
+    // ── Alarm toggles (PHASE_3) ─────────────────────────────────────────────
+
+    private fun alarmKey(prayer: PrayerName) = booleanPreferencesKey(
+        when (prayer) {
+            PrayerName.FAJR -> PrefKeys.ALARM_FAJR_ENABLED
+            PrayerName.DHUHR -> PrefKeys.ALARM_DHUHR_ENABLED
+            PrayerName.ASR -> PrefKeys.ALARM_ASR_ENABLED
+            PrayerName.MAGHRIB -> PrefKeys.ALARM_MAGHRIB_ENABLED
+            PrayerName.ISHA -> PrefKeys.ALARM_ISHA_ENABLED
+        }
+    )
+
+    /** One-shot read for the scheduler (AlarmWorker/AlarmScheduler — never main thread). */
+    suspend fun getAlarmEnabledOnce(prayer: PrayerName): Boolean =
+        store.data.first()[alarmKey(prayer)] ?: true // default ON (DATA_SCHEMA.md)
+
+    /** Live flow for the UI switches. */
+    fun alarmEnabledFlow(prayer: PrayerName): Flow<Boolean> =
+        store.data.map { it[alarmKey(prayer)] ?: true }
+
+    suspend fun setAlarmEnabled(prayer: PrayerName, enabled: Boolean) {
+        store.edit { it[alarmKey(prayer)] = enabled }
+    }
+
+    // ── Azan selection (PHASE_3 scheduling; UI picker arrives in PHASE_8) ──
+
+    val selectedAzan: Flow<AzanOption> =
+        store.data.map { prefs ->
+            when (prefs[stringPreferencesKey(PrefKeys.SELECTED_AZAN)]) {
+                "makkah" -> AzanOption.MAKKAH
+                else -> AzanOption.DEFAULT
+            }
+        }
+
+    suspend fun getSelectedAzanOnce(): AzanOption =
+        when (store.data.first()[stringPreferencesKey(PrefKeys.SELECTED_AZAN)]) {
+            "makkah" -> AzanOption.MAKKAH
+            else -> AzanOption.DEFAULT
+        }
+
+    suspend fun setSelectedAzan(option: AzanOption) {
+        store.edit {
+            it[stringPreferencesKey(PrefKeys.SELECTED_AZAN)] =
+                if (option == AzanOption.MAKKAH) "makkah" else "default"
+        }
+    }
 }
