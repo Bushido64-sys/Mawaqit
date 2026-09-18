@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-18 — PHASE 3 ✅ PASSED (6/6) + [PHASE-3.1] bulletproofing COMMITTED & PUSHED (615b0a5). Next: rebuild in Codespaces → quick re-test → Phase 4.**
+> **Last updated: 2026-09-18 — PHASE 3 ✅ 6/6. [PHASE-3.1] + [PHASE-3.2] pushed (7-day plan, housekeeping, diagnostics, MY_PACKAGE_REPLACED removal). Rebuild → re-test → Phase 4.**
 
 ---
 
@@ -41,6 +41,17 @@ What was built (14 files + stubs, commits 643fd7f + 0f7e1d0):
 - ✅ Check 2: notification auto-dismissed by itself; code-verified: 5-min delay → stopSelf()
   → onDestroy → audio stop + STOP_FOREGROUND_REMOVE. Also setOngoing(true) = swipe-proof.
 - ✅ Check 6: alarm ⏰ icon appeared in status bar while ringing (user-confirmed)
+- **PHASE-3.2 (post-3.1 user test):** reboot + clock set to 5:02 (Fajr 5:03) →
+  notification arrived 5:04. VERDICT: the alarm SURVIVED the reboot (fired
+  end-to-end); ~1 min lateness = post-boot system congestion (re-arm worker and
+  delivery both land in the boot storm) — normal for every alarm app when the
+  event is minutes after boot; real 3 AM reboots have hours of slack. Bug found
+  + fixed: MY_PACKAGE_REPLACED is NOT on Android's implicit-broadcast exemption
+  list → the manifest registration was dead code; removed from manifest +
+  BootReceiver (updates still covered: armed setAlarmClock slots survive
+  updates + daily housekeeping + next app open). Added TEMP diagnostics on the
+  home screen: "Test azan in 10s" (full real chain, sentinel TEST prayer, no
+  salah_log row) and "Re-arm alarms" (with armed-count feedback).
 - User asked about required settings + auto re-prompt: one-time setup = notifications
   popup (in app) + battery Unrestricted (+ Alarms & reminders on Android 12 only).
   Re-prompt "health cards" are PLANNED for Phase 8 (battery card in PHASE_8_SETTINGS.md);
@@ -71,8 +82,8 @@ safe, wakelock handoff, START_NOT_STICKY. Gaps found, mapped to phases:
 - **GAP-5 (LOW) — cosmetic:** placeholder notification icon → real art in Phase 4/9;
   month-edge next-Fajr approximation → Phase 4 polish.
 
-**Next: user rebuilds (codespaces/build.sh) → installs → quick alarm re-test →
-explicit OK → PHASE 4.**
+**Next: user rebuilds (codespaces/build.sh) → installs → taps "Test azan in 10s"
++ "Re-arm alarms" → explicit OK → PHASE 4.**
 
 ---
 
@@ -168,6 +179,10 @@ explicit OK → PHASE 4.**
   bulletproofing audit done → GAP-1..5 backlog added to this file. GAP-1+GAP-2
   FIXED same session in [PHASE-3.1] (commit 615b0a5): 7-day plan executor +
   daily housekeeping + clock/timezone/update re-arm. Rebuild + re-test pending.
+  Then [PHASE-3.2]: user's reboot+clock test fired 1 min late (5:04 vs 5:03) —
+  diagnosed post-boot congestion, chain INTACT (reboot survival confirmed);
+  MY_PACKAGE_REPLACED registration removed (not exempt per Android docs);
+  temp diagnostics (test azan / re-arm) added. Rebuild + re-test pending.
 
 ## PHASE-2 IMPLEMENTATION NOTES (for future debugging)
 - New files: data/model/PrayerTimings.kt, data/api/Aladhan{Models,ApiService}.kt,
