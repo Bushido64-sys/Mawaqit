@@ -12,10 +12,17 @@ import androidx.work.WorkManager
  * closes GAP-2).
  *
  * AlarmManager alarms are RAM-only — they do NOT survive reboot. They also go
- * stale when the user changes the clock or timezone, and after an app update
- * (PendingIntents survive updates, but the armed plan may no longer match
- * reality). All four triggers funnel into ONE fix: hand off to AlarmWorker
- * via WorkManager, which rebuilds the 7-day plan from the offline Room cache.
+ * stale when the user changes the clock or timezone. All triggers funnel into
+ * ONE fix: hand off to AlarmWorker via WorkManager, which rebuilds the 7-day
+ * plan from the offline Room cache.
+ *
+ * TIME_SET and TIMEZONE_CHANGED are on Android's official implicit-broadcast
+ * exemption list (developer.android.com → "Implicit broadcast exceptions"),
+ * so manifest registration receives them on all supported API levels.
+ * MY_PACKAGE_REPLACED is NOT exempt — never delivered to a manifest receiver
+ * — so it is NOT handled here (removed in PHASE-3.2). App updates are still
+ * covered: armed setAlarmClock slots survive updates, DailyAlarmWorker
+ * re-arms within a day, and the next app open re-arms immediately.
  *
  * This receiver does no DB work itself (broadcast window is ~10s and the phone
  * may be in direct-boot/locked state): enqueue-only. All heavy lifting happens
@@ -31,8 +38,7 @@ class BootReceiver : BroadcastReceiver() {
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_TIME_CHANGED,
-            Intent.ACTION_TIMEZONE_CHANGED,
-            Intent.ACTION_MY_PACKAGE_REPLACED -> {
+            Intent.ACTION_TIMEZONE_CHANGED -> {
                 WorkManager.getInstance(context).enqueue(
                     OneTimeWorkRequestBuilder<AlarmWorker>().build()
                 )

@@ -70,8 +70,15 @@
         </receiver>
 
         <!-- System-event receiver — reschedules alarms after reboot (PHASE_3)
-             and after clock/timezone changes or app updates (PHASE-3.1, GAP-2:
-             all of those can leave armed alarm wall-times stale).
+             and after clock/timezone changes (PHASE-3.1, GAP-2: both can leave
+             armed alarm wall-times stale). Both are on Android's official
+             implicit-broadcast exemption list (developer.android.com
+             /broadcast-exceptions), so manifest registration is valid.
+             MY_PACKAGE_REPLACED was REMOVED (PHASE-3.2): that broadcast is
+             explicitly NOT exempt — a manifest registration never fires it.
+             App updates are still covered: alarms self-fire (setAlarmClock
+             slots survive updates), the daily housekeeping job re-arms, and
+             the next app open re-arms.
              LOCKED_BOOT_COMPLETED is registered but ignored in code:
              Room/DataStore (credential-encrypted) are unreadable pre-unlock
              (see PERMISSIONS.md note and BootReceiver). -->
@@ -84,7 +91,6 @@
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.TIME_SET" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 

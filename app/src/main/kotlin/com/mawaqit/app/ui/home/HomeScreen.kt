@@ -93,7 +93,13 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
             onKarachi = viewModel::testKarachi
         )
     } else {
-        TimesContent(state, onToggleAlarm = viewModel::toggleAlarm)
+        TimesContent(
+            state,
+            onToggleAlarm = viewModel::toggleAlarm,
+            onRearm = viewModel::rearmAlarms,
+            onTestAzan = viewModel::fireTestAlarm,
+            onDismissDiag = viewModel::clearDiagMessage
+        )
     }
 }
 
@@ -148,7 +154,10 @@ private fun LocationSetupContent(
 @Composable
 private fun TimesContent(
     state: HomeUiState,
-    onToggleAlarm: (PrayerName, Boolean) -> Unit
+    onToggleAlarm: (PrayerName, Boolean) -> Unit,
+    onRearm: () -> Unit,
+    onTestAzan: () -> Unit,
+    onDismissDiag: () -> Unit
 ) {
     val timings = state.timings ?: return
 
@@ -243,6 +252,43 @@ private fun TimesContent(
         }
 
         Spacer(Modifier.height(24.dp))
+
+        // ── PHASE-3.2 temp diagnostics card (removed in PHASE_4) ──
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer
+            )
+        ) {
+            Column(Modifier.padding(12.dp)) {
+                Text(
+                    "Alarm diagnostics (temporary)",
+                    style = MaterialTheme.typography.labelMedium
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(onClick = onRearm, modifier = Modifier.weight(1f)) {
+                        Text("Re-arm alarms")
+                    }
+                    OutlinedButton(onClick = onTestAzan, modifier = Modifier.weight(1f)) {
+                        Text("Test azan in 10s")
+                    }
+                }
+                state.diagMessage?.let { msg ->
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        msg,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
         BuildStamp()
     }
 }

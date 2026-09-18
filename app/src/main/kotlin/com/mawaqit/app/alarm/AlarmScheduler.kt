@@ -84,20 +84,47 @@ class AlarmScheduler @Inject constructor(
         if (scheduled.timeMillis <= System.currentTimeMillis()) return // plan entry aged out mid-flight
         val pendingIntent = pendingIntentFor(scheduled)
         alarmManager.cancel(pendingIntent) // never double-schedule the same slot
+        deliverAt(pendingIntent, scheduled.timeMillis)
+        Log.i(TAG, "Alarm armed: ${scheduled.prayer} at ${scheduled.timeMillis} (${scheduled.azanType})")
+    }
+
+    /**
+     * PHASE-3.2 diagnostics: arm a one-off test alarm [delaySeconds] from now.
+     * Fires the FULL real chain (AlarmReceiver → AzanService → notification +
+     * audio) using the sentinel prayer name "TEST" — AzanService shows the
+     * banner but writes NO salah_log row for it. Not added to ACTIVE_ALARMS:
+     * it self-fires within seconds, and if a plan refresh lands first, that
+     * legitimately cancels it. Uses the same exact-alarm path as real alarms
+     * so the test measures what users actually get.
+     */
+    fun scheduleTestAlarm(delaySeconds: Long = 10) {
+        val at = System.currentTimeMillis() + delaySeconds * 1000
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            action = AlarmReceiver.ACTION_PRAYER_ALARM
+            putExtra(AlarmReceiver.EXTRA_PRAYER_NAME, AzanService.TEST_PRAYER_NAME)
+            putExtra(AlarmReceiver.EXTRA_AZAN_TYPE, AzanType.DEFAULT.name)
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            TEST_REQUEST_CODE, // outside the prayer.ordinal*100M + yyyymmdd space
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pendingIntent)
+        deliverAt(pendingIntent, at)
+        Log.i(TAG, "Test alarm armed for +${delaySeconds}s")
+    }
+
+    /** Exact when permitted, else the 10-minute window fallback (PERMISSIONS.md). */
+    private fun deliverAt(pendingIntent: PendingIntent, timeMillis: Long) {
         if (canScheduleExactAlarms()) {
             alarmManager.setAlarmClock(
-                AlarmManager.AlarmClockInfo(scheduled.timeMillis, openAppPendingIntent()),
+                AlarmManager.AlarmClockInfo(timeMillis, openAppPendingIntent()),
                 pendingIntent
             )
-            Log.i(TAG, "Exact alarm set: ${scheduled.prayer} at ${scheduled.timeMillis} (${scheduled.azanType})")
         } else {
-            alarmManager.setWindow(
-                AlarmManager.RTC_WAKEUP,
-                scheduled.timeMillis,
-                WINDOW_MS,
-                pendingIntent
-            )
-            Log.w(TAG, "Exact-alarm permission missing — ${scheduled.prayer} uses a ${WINDOW_MS / 60000}min window")
+            alarmManager.setWindow(AlarmManager.RTC_WAKEUP, timeMillis, WINDOW_MS, pendingIntent)
+            Log.w(TAG, "Exact-alarm permission missing — using a ${WINDOW_MS / 60000}min window")
         }
     }
 
@@ -162,5 +189,6 @@ class AlarmScheduler @Inject constructor(
     companion object {
         private const val TAG = "Mawaqit"
         private const val WINDOW_MS = 10 * 60_000L // 10 minutes, inexact fallback only
+        private const val TEST_REQUEST_CODE = 999_999_999
     }
 }

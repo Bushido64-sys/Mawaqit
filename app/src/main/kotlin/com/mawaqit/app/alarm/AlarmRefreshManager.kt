@@ -78,6 +78,12 @@ class AlarmRefreshManager @Inject constructor(
         return plan.size
     }
 
+    /**
+     * PHASE-3.2 diagnostics: fire the full azan chain (notification + audio)
+     * in ~[delaySeconds] seconds, bypassing the plan. No salah_log row.
+     */
+    fun fireTestAlarm(delaySeconds: Long = 10L) = scheduler.scheduleTestAlarm(delaySeconds)
+
     companion object {
         private const val TAG = "Mawaqit"
 

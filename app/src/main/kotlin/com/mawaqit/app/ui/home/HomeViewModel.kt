@@ -38,7 +38,8 @@ data class HomeUiState(
     val cityName: String? = null,
     val fromCache: Boolean = false,      // true → show "Cached data" banner
     val error: String? = null,
-    val alarmStates: Map<PrayerName, Boolean> = emptyMap() // PHASE_3 temp test UI
+    val alarmStates: Map<PrayerName, Boolean> = emptyMap(), // PHASE_3 temp test UI
+    val diagMessage: String? = null                         // PHASE-3.2 temp diagnostics
 )
 
 @HiltViewModel
@@ -129,6 +130,24 @@ class HomeViewModel @Inject constructor(
             refreshManager.refreshAlarmsFromCache()
         }
     }
+
+    // ── PHASE-3.2: temp diagnostics (removed in PHASE_4) ───────────────────
+
+    /** Rebuild + re-apply the 7-day plan from cache; report the count. */
+    fun rearmAlarms() {
+        viewModelScope.launch {
+            val count = refreshManager.refreshAlarmsFromCache()
+            _state.update { it.copy(diagMessage = "$count alarm(s) armed for the next 7 days.") }
+        }
+    }
+
+    /** Fire the full real azan chain in ~10 seconds (notification + audio). */
+    fun fireTestAlarm() {
+        refreshManager.fireTestAlarm()
+        _state.update { it.copy(diagMessage = "Test alarm armed — azan notification in ~10 seconds.") }
+    }
+
+    fun clearDiagMessage() = _state.update { it.copy(diagMessage = null) }
 
     /**
      * True when the azan notification banner can't show (Android 13+ and the

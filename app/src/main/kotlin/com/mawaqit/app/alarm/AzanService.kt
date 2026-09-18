@@ -42,18 +42,20 @@ class AzanService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val prayerNameStr = intent?.getStringExtra(AlarmReceiver.EXTRA_PRAYER_NAME)
+        val isTest = prayerNameStr == TEST_PRAYER_NAME // PHASE-3.2 diagnostics sentinel
         val prayer = PrayerName.entries.firstOrNull { it.name == prayerNameStr }
-        if (prayer == null) {
+        if (prayer == null && !isTest) {
             Log.e("Mawaqit", "AzanService started without a valid prayer — stopping")
             stopSelf()
             return START_NOT_STICKY
         }
+        val prayerLabel = if (isTest) "Test azan" else prayer?.displayName() ?: "Azan"
 
         // 1. Notification FIRST — the system gives ~5s to reach startForeground().
         AzanServiceUi.createChannel(this)
         AzanServiceUi.startAsForeground(
             this,
-            AzanServiceUi.buildNotification(this, prayer.displayName())
+            AzanServiceUi.buildNotification(this, prayerLabel)
         )
 
         if (started) return START_NOT_STICKY // already playing for this/another prayer
@@ -61,7 +63,8 @@ class AzanService : Service() {
 
         // 2. Log "time reached" in salah_log (prayed stays false — user must tap).
         //    Only when no row exists yet, so we never overwrite a "prayed" mark.
-        serviceScope.launch {
+        //    Test alarms (diagnostics) never touch the log — no fake data.
+        if (!isTest && prayer != null) serviceScope.launch {
             try {
                 val todayIso = LocalDate.now().toString()
                 if (db.salahLogDao().getSalahStatus(todayIso, prayer.name) == null) {
@@ -115,5 +118,8 @@ class AzanService : Service() {
 
     companion object {
         private const val FIVE_MINUTES_MS = 5 * 60_000L
+
+        /** Sentinel prayer name for diagnostics test alarms (PHASE-3.2). */
+        const val TEST_PRAYER_NAME = "TEST"
     }
 }
