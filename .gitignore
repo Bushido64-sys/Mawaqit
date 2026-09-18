@@ -37,3 +37,6 @@ lint-results*
 
 # Node (if any tooling added later)
 node_modules/
+
+# LibreOffice lock files (PROGRESS.md editing artifact, e.g. .~lock.PROGRESS.md#)
+.~lock.*#
