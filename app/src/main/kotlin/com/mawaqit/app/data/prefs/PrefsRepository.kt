@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.mawaqit.app.data.model.PrayerName
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -42,6 +43,9 @@ object PrefKeys {
 
     // Azan selection (PHASE_3) — "default" | "fajr" | "makkah"
     const val SELECTED_AZAN = "selected_azan"
+
+    // Active alarm registry (PHASE-3.1) — what AlarmManager currently holds
+    const val ACTIVE_ALARMS = "active_alarms"            // Set<String>
 
     // Alarm toggles (PHASE_3) — one per prayer, default true
     const val ALARM_FAJR_ENABLED    = "alarm_fajr_enabled"
@@ -153,5 +157,21 @@ class PrefsRepository @Inject constructor(
             it[stringPreferencesKey(PrefKeys.SELECTED_AZAN)] =
                 if (option == AzanOption.MAKKAH) "makkah" else "default"
         }
+    }
+
+    // ── Active alarm registry (PHASE-3.1) ──────────────────────────────────
+
+    /**
+     * What AlarmManager currently holds for us, one entry per armed alarm:
+     * "PRAYER|dateIso|timeMillis|azanType" (see PlannedAlarm.toRegistryEntry).
+     * AlarmManager cannot be enumerated, so this registry is how
+     * AlarmScheduler.cancelAllAlarms() knows which slots to clear.
+     * Empty set == nothing armed.
+     */
+    suspend fun getActiveAlarmsOnce(): Set<String> =
+        store.data.first()[stringSetPreferencesKey(PrefKeys.ACTIVE_ALARMS)] ?: emptySet()
+
+    suspend fun setActiveAlarms(entries: Set<String>) {
+        store.edit { it[stringSetPreferencesKey(PrefKeys.ACTIVE_ALARMS)] = entries }
     }
 }

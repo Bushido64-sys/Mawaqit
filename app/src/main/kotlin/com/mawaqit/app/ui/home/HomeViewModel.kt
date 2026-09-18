@@ -7,7 +7,7 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mawaqit.app.alarm.AlarmScheduler
+import com.mawaqit.app.alarm.AlarmRefreshManager
 import com.mawaqit.app.data.model.NextPrayer
 import com.mawaqit.app.data.model.PrayerName
 import com.mawaqit.app.data.model.PrayerTimings
@@ -27,7 +27,8 @@ import kotlinx.coroutines.launch
 /**
  * PHASE_2 temporary state holder — PHASE_4 replaces the UI with the real design.
  * PHASE_3 adds: alarm toggle states (for the TEMP test switches) and alarm
- * scheduling whenever today's times load.
+ * scheduling whenever today's times load. PHASE-3.1 switches scheduling to
+ * AlarmRefreshManager (7-day plan from the offline cache).
  */
 data class HomeUiState(
     val needsLocation: Boolean = true,   // no saved coords yet → show buttons
@@ -45,7 +46,7 @@ class HomeViewModel @Inject constructor(
     private val repository: PrayerRepository,
     private val locationHelper: LocationHelper,
     private val prefs: PrefsRepository,
-    private val alarmScheduler: AlarmScheduler,
+    private val refreshManager: AlarmRefreshManager,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
@@ -117,15 +118,15 @@ class HomeViewModel @Inject constructor(
     }
 
     /**
-     * TEMP test-UI switch: save the pref, then re-schedule (or cancel) with
-     * AlarmScheduler. scheduleAllPrayerAlarms handles both directions — it
-     * cancels disabled prayers and schedules enabled future ones.
+     * TEMP test-UI switch: save the pref, then rebuild the whole alarm plan.
+     * refreshAlarmsFromCache handles both directions — disabled prayers are
+     * left out of the plan (and their stale alarms cancelled), enabled ones
+     * are armed for the next 7 days.
      */
     fun toggleAlarm(prayer: PrayerName, enabled: Boolean) {
         viewModelScope.launch {
             prefs.setAlarmEnabled(prayer, enabled)
-            val timings = repository.getTodayPrayerTimes() ?: return@launch
-            alarmScheduler.scheduleAllPrayerAlarms(timings)
+            refreshManager.refreshAlarmsFromCache()
         }
     }
 
@@ -166,9 +167,11 @@ class HomeViewModel @Inject constructor(
                         fromCache = !fetched
                     )
                 }
-                // PHASE_3: every app open re-arms today's enabled alarms
-                // (PHASE_3_ALARMS.md scheduling logic). Skips past times.
-                timings?.let { alarmScheduler.scheduleAllPrayerAlarms(it) }
+                // PHASE_3: every app open re-arms the alarms. PHASE-3.1: the
+                // plan now covers the next 7 days from the offline cache
+                // (GAP-1) — one missed app-open day can no longer silence
+                // tomorrow's Fajr. Network is NOT touched here.
+                refreshManager.refreshAlarmsFromCache()
             }
         }
     }

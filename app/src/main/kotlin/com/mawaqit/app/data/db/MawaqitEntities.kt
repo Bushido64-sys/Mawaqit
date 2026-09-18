@@ -38,6 +38,11 @@ interface PrayerTimeDao {
     @Query("SELECT * FROM prayer_times WHERE date = :date LIMIT 1")
     suspend fun getPrayerTimeByDate(date: String): PrayerTimeEntity?
 
+    /** Inclusive date-range read (ISO dates ⇒ lexicographic == chronological).
+     *  Used by PHASE-3.1's AlarmRefreshManager to plan the next N days. */
+    @Query("SELECT * FROM prayer_times WHERE date BETWEEN :startDate AND :endDate ORDER BY date ASC")
+    suspend fun getPrayerTimesBetween(startDate: String, endDate: String): List<PrayerTimeEntity>
+
     @Query("SELECT * FROM prayer_times WHERE date LIKE :monthPattern")
     suspend fun getPrayerTimesForMonth(monthPattern: String): List<PrayerTimeEntity>
     // monthPattern example: "2026-09-%"
