@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-17 — PHASE 2 COMPLETE (5/5 phone checks passed). Next: Phase 3, pending user OK.**
+> **Last updated: 2026-09-18 — PHASE 3 CODE COMPLETE (committed + pushed). Next: Codespaces build, then phone test — pending build result.**
 
 ---
 
@@ -14,12 +14,26 @@ Android prayer-times + alarm app (Kotlin, Compose, offline-first), built phase b
 from a detailed guidebook (`mawaqit-guidebook/`), with the user learning as we go.
 
 ## WHERE WE ARE RIGHT NOW
-**Phase 2 (prayer times) — COMPLETE and verified on device.** All 5 checks passed:
-Karachi times load ✓, times match aladhan.com (method 1, Hanafi) ✓, offline cache +
-"Cached data" banner ✓, GPS "Use My Location" ✓, live countdown ticks ✓.
-The app now: fetches the month once from AlAdhan → stores in Room (4 tables, ISO dates) →
-serves times offline-first. Temp home screen still in place (PHASE_4 replaces it).
-**Next: PHASE_3 (alarms) — only after the user gives an explicit go.**
+**Phase 3 (alarms) — CODE COMPLETE, committed & pushed 2026-09-18.** Not yet built
+or phone-tested. User chose **silent stub audio** (3 tiny silent files in res/raw;
+real azan MP3s swap in later → one rebuild) and approved both TEMP test helpers
+(5 alarm switches + notification permission popup on the temp HomeScreen).
+
+What was built (14 files + stubs, commits 643fd7f + 0f7e1d0):
+- alarm/: AlarmScheduler (setAlarmClock + inexact fallback), AlarmReceiver (wakelock
+  handoff), AzanService (FGS, IMPORTANCE_HIGH channel, 5-min cutoff, salah_log
+  time-reached row), AzanPlayer (alarm stream; guidebook crash bug fixed),
+  AzanReceiver + MarkPrayedWorker (notification "Mark as Prayed"), BootReceiver →
+  AlarmWorker (WorkManager reschedule after reboot; LOCKED_BOOT ignored — CE storage),
+  AzanType, AzanServiceUi.
+- Wiring: manifest receivers/service + WorkManager initializer removal,
+  MawaqitApplication implements Configuration.Provider (HiltWorkerFactory),
+  PrefsRepository alarm toggles + azan choice, strings, HomeViewModel schedules
+  alarms whenever today's times load, temp switches + notif popup in HomeScreen.
+- Guidebook patched BEFORE code: ASSETS.md AzanPlayer setAudioAttributes crash,
+  PERMISSIONS.md LOCKED_BOOT_COMPLETED note.
+**Next: user runs codespaces/build.sh → installs APK → 7 phone checks
+(PHASE_3_ALARMS.md checklist, adapted for silent audio — see assignment when asked).**
 
 ---
 
@@ -29,8 +43,7 @@ serves times offline-first. Temp home screen still in place (PHASE_4 replaces it
 | 0 | Guidebook written, reviewed, 11 doc issues fixed | ✅ done |
 | 1 | Skeleton: Gradle, manifest, resources, theme, Hilt app, MainActivity | ✅ COMPLETE — 5/5 phone checks passed 2026-09-17 |
 | 2 | Prayer times (AlAdhan API + Room + repository) | ✅ COMPLETE — 5/5 phone checks passed 2026-09-17 |
-| 3 | Alarms (AlarmReceiver, BootReceiver, AzanService) | 🔒 LOCKED — needs user's explicit OK to start |
-| 3 | Alarms (AlarmReceiver, BootReceiver, AzanService) | not started |
+| 3 | Alarms (AlarmReceiver, BootReceiver, AzanService) | 🔨 CODE COMPLETE 2026-09-18 — needs build + phone test |
 | 4 | Home screen UI | not started |
 | 5 | Widget (Glance; lock-screen = opportunistic bonus) | not started |
 | 6 | Quran (UmmahAPI — endpoints re-verified live in Sept 2026) | not started |
@@ -78,22 +91,23 @@ serves times offline-first. Temp home screen still in place (PHASE_4 replaces it
 - [x] **Build APK in Codespaces** (`assignment/07`) — DONE 2026-09-17 after 3 build fixes
       (Java 25→17, daemon eviction, icon XML). The pipeline works; rebuilding is now routine.
 - [~] **Phone test, 5 checks** (`assignment/03`) — DONE for both phases (Phase 1 & Phase 2 all 5/5).
-- [ ] **Azan audio: 3 files, ≤3MB each** (`assignment/05`) — NOW RELEVANT: Phase 3's dependency.
-      Decide at next session start: stub audio first, or wait for real files.
+- [ ] **Azan audio: 3 real MP3 files, ≤3MB each** (`assignment/05`) — DECIDED: stubs first.
+      Silent 16KB stubs are committed in `res/raw/` (Phase 3 works, no sound). When the
+      user drops in real azan_default/fajr/makkah.mp3, ONE rebuild swaps them — nothing else changes.
 - [ ] Compress splash video to ≤4MB → `app/src/main/res/raw/splash_video.mp4` (needed by Phase 9 only)
 
 ## NEXT SESSION: DO THIS IN ORDER
 1. **Read this file top to bottom.** (You just did — good.)
-2. User has already confirmed: **start PHASE_3 (alarms) this session.** Read
-   `mawaqit-guidebook/PHASE_3_ALARMS.md` + `PERMISSIONS.md` fully before writing code.
-3. Ask the user ONE question first: build with **silent stub audio** (they add the 3 azan
-   MP3s later, then one rebuild) or **wait for real audio files** in `app/src/main/res/raw/`
-   (azan_default/fajr/makkah.mp3, ≤3MB each — see assignment/05).
-4. Build Phase 3 exactly per the guidebook (AlarmReceiver, BootReceiver rescheduling,
-   AzanService foreground audio). Reuse NextPrayer.timeMillis from Phase 2 for scheduling.
-5. If anything fails: get the "What went wrong" box from build.sh output or the exact phone
-   behavior, fix, commit (`[PHASE-N]` prefix), push, user rebuilds. One fix at a time.
-6. **Before ending any session:** update this file (status line, phases table, pending items).
+2. Ask user for the build result: `codespaces/build.sh` output (APK name or the
+   "What went wrong" box) or the exact phone behavior. One fix at a time,
+   commit `[PHASE-3]`, push, user rebuilds.
+3. Build is green → APK on phone → run the 7 Phase-3 checks (PHASE_3_ALARMS.md
+   "PHASE 3 COMPLETE WHEN" checklist). Silent audio means: verify by SEEING the
+   notification appear at prayer time and disappear after 5 min / Mark-as-Prayed.
+4. Phase 3 passes → user gives explicit OK → PHASE_4 (home screen UI) next.
+   NOTE for Phase 4: remove the two TEMP helpers from HomeScreen (switches +
+   notif popup) and replace the placeholder notification icon.
+5. **Before ending any session:** update this file (status line, phases table, pending items).
 
 ## SESSION LOG (one line per working session, newest last)
 - **2026-09-17 — Session 1:** Docs patched (11 issues + live API verification). Phase 1 built
@@ -104,6 +118,11 @@ serves times offline-first. Temp home screen still in place (PHASE_4 replaces it
   cross-check, offline cache + banner, GPS, live countdown). One compile fix (Modifier import).
   ~17 files: Room (4 tables, ISO), AlAdhan Retrofit, DataStore prefs, GPS helper, offline-first
   repo, temp HomeScreen. Paused with user's OK — **Phase 3 next.**
+- **2026-09-18 — Session 3:** Phase 3 (alarms) CODE COMPLETE — 10 alarm files + wiring
+  (manifest, Hilt WorkManager config, prefs toggles, temp switches + notif popup, 3 silent
+  audio stubs). 2 guidebook bugs patched pre-code (AzanPlayer crash, LOCKED_BOOT). Session
+  interrupted mid-build once; resumed cleanly. 2 commits pushed: 643fd7f, 0f7e1d0.
+  **Next: Codespaces build → phone test.**
 
 ## PHASE-2 IMPLEMENTATION NOTES (for future debugging)
 - New files: data/model/PrayerTimings.kt, data/api/Aladhan{Models,ApiService}.kt,
