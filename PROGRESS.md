@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-18 — PHASE 3 CODE COMPLETE (committed + pushed). Next: Codespaces build, then phone test — pending build result.**
+> **Last updated: 2026-09-18 — PHASE 3 ✅ PASSED (6/6) + [PHASE-3.1] bulletproofing COMMITTED & PUSHED (615b0a5). Next: rebuild in Codespaces → quick re-test → Phase 4.**
 
 ---
 
@@ -32,8 +32,47 @@ What was built (14 files + stubs, commits 643fd7f + 0f7e1d0):
   alarms whenever today's times load, temp switches + notif popup in HomeScreen.
 - Guidebook patched BEFORE code: ASSETS.md AzanPlayer setAudioAttributes crash,
   PERMISSIONS.md LOCKED_BOOT_COMPLETED note.
-**Next: user runs codespaces/build.sh → installs APK → 7 phone checks
-(PHASE_3_ALARMS.md checklist, adapted for silent audio — see assignment when asked).**
+**PHONE TEST RESULTS (user, 2026-09-18, silent audio — verify by seeing):**
+- ✅ Check 1: Dhuhr notification appeared at prayer time
+- ✅ Check 3: "Mark as Prayed" button works (writes salah_log; its on-screen display
+  is INTENTIONALLY absent — Phase 4 builds the home screen that reads it)
+- ✅ Check 5: rebooted right before prayer time, notification still fired (BootReceiver verified)
+- ✅ Check 4: toggle OFF → no notification for that prayer
+- ✅ Check 2: notification auto-dismissed by itself; code-verified: 5-min delay → stopSelf()
+  → onDestroy → audio stop + STOP_FOREGROUND_REMOVE. Also setOngoing(true) = swipe-proof.
+- ✅ Check 6: alarm ⏰ icon appeared in status bar while ringing (user-confirmed)
+- User asked about required settings + auto re-prompt: one-time setup = notifications
+  popup (in app) + battery Unrestricted (+ Alarms & reminders on Android 12 only).
+  Re-prompt "health cards" are PLANNED for Phase 8 (battery card in PHASE_8_SETTINGS.md);
+  agreed to widen into one "Alarm Health" card checking all 3 permissions.
+
+## BULLETPROOFING AUDIT (2026-09-18, user wants "best in market")
+Full code audit of alarm chain (AzanService, AlarmScheduler, AlarmReceiver,
+AlarmWorker, AzanPlayer, AzanServiceUi, HomeViewModel). Core chain is SOLID:
+reboot-safe, toggle-safe, no double-scheduling, alarm-stream audio, corrupt-file
+safe, wakelock handoff, START_NOT_STICKY. Gaps found, mapped to phases:
+- **GAP-1 (HIGH) — CLOSED in [PHASE-3.1] (commit 615b0a5, 2026-09-18):** 7-day
+  alarm plan from offline cache + DailyAlarmWorker 24h housekeeping + ACTIVE_ALARMS
+  registry (plan-executor rework of AlarmScheduler, per-(prayer,date) slots).
+- **GAP-2 (MED) — CLOSED in [PHASE-3.1]:** TIME_SET / TIMEZONE_CHANGED /
+  MY_PACKAGE_REPLACED → AlarmWorker reschedule (BootReceiver + manifest extended).
+  Design notes: requestCode = prayer.ordinal*100_000_000 + yyyymmdd; azanTypeFor
+  resolved at PLAN time (extra freezes with the alarm — Phase 8 selector change
+  applies on next plan refresh, acceptable); DailyAlarmWorker KEEP policy, 1h
+  initial delay, battery-not-low constraint. Needs a Codespaces rebuild + one
+  phone re-test (alarms still fire; ideally toggle + one prayer) before Phase 4.
+- **GAP-3 (MED) — permission health:** Phase 8 planned battery card; agreed to make
+  ONE "Alarm Health" card (notifications + battery + exact-alarm) that re-checks on
+  every app open and auto-hides when healthy. Plus a "test azan in 10s" button.
+  → Phase 8.
+- **GAP-4 (LOW) — audio polish:** real MP3s still pending (assignment/05, one rebuild
+  swaps them); add audio-focus request (duck/pause other players) with real audio.
+  → when files arrive / Phase 8 azan selector.
+- **GAP-5 (LOW) — cosmetic:** placeholder notification icon → real art in Phase 4/9;
+  month-edge next-Fajr approximation → Phase 4 polish.
+
+**Next: user rebuilds (codespaces/build.sh) → installs → quick alarm re-test →
+explicit OK → PHASE 4.**
 
 ---
 
@@ -43,7 +82,7 @@ What was built (14 files + stubs, commits 643fd7f + 0f7e1d0):
 | 0 | Guidebook written, reviewed, 11 doc issues fixed | ✅ done |
 | 1 | Skeleton: Gradle, manifest, resources, theme, Hilt app, MainActivity | ✅ COMPLETE — 5/5 phone checks passed 2026-09-17 |
 | 2 | Prayer times (AlAdhan API + Room + repository) | ✅ COMPLETE — 5/5 phone checks passed 2026-09-17 |
-| 3 | Alarms (AlarmReceiver, BootReceiver, AzanService) | 🔨 CODE COMPLETE 2026-09-18 — needs build + phone test |
+| 3 | Alarms (AlarmReceiver, BootReceiver, AzanService) | ✅ PASSED — phone test 6/6 on 2026-09-18 (silent stubs; 5-min dismiss verified in code) |
 | 4 | Home screen UI | not started |
 | 5 | Widget (Glance; lock-screen = opportunistic bonus) | not started |
 | 6 | Quran (UmmahAPI — endpoints re-verified live in Sept 2026) | not started |
@@ -123,6 +162,12 @@ What was built (14 files + stubs, commits 643fd7f + 0f7e1d0):
   audio stubs). 2 guidebook bugs patched pre-code (AzanPlayer crash, LOCKED_BOOT). Session
   interrupted mid-build once; resumed cleanly. 2 commits pushed: 643fd7f, 0f7e1d0.
   **Next: Codespaces build → phone test.**
+- **2026-09-18 — Session 4:** Codespaces build OK; **Phase 3 phone test PASSED 6/6**
+  (fires at Dhuhr, Mark-as-Prayed, survives reboot, toggle-off, 5-min auto-dismiss
+  code-verified, alarm icon seen). salah_log display = Phase 4 by design. Full
+  bulletproofing audit done → GAP-1..5 backlog added to this file. GAP-1+GAP-2
+  FIXED same session in [PHASE-3.1] (commit 615b0a5): 7-day plan executor +
+  daily housekeeping + clock/timezone/update re-arm. Rebuild + re-test pending.
 
 ## PHASE-2 IMPLEMENTATION NOTES (for future debugging)
 - New files: data/model/PrayerTimings.kt, data/api/Aladhan{Models,ApiService}.kt,
