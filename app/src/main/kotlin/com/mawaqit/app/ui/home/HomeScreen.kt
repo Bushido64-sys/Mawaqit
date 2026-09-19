@@ -3,7 +3,9 @@ package com.mawaqit.app.ui.home
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,19 +13,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -40,11 +46,11 @@ import com.mawaqit.app.ui.components.LoadingState
 import com.mawaqit.app.ui.components.NextPrayerCard
 import com.mawaqit.app.ui.components.PrayerRow
 import com.mawaqit.app.ui.theme.PrimaryGold
-import com.mawaqit.app.ui.theme.SurfaceDeep
 import com.mawaqit.app.util.PrayerStatus
 import com.mawaqit.app.util.formatCountdown
 import com.mawaqit.app.util.parseTimeToMillis
 import java.time.LocalDate
+import kotlinx.coroutines.delay
 
 /**
  * PHASE_4: the real home screen (DESIGN.md Screen 3) — NextPrayerCard hero,
@@ -144,6 +150,28 @@ private fun TimesContent(state: HomeUiState, viewModel: HomeViewModel) {
     val timings = state.timings ?: return
     val now = state.nowMillis
 
+    // PHASE-5.2: promo is a bottom-sheet POPUP after ~5s (user request), not
+    // a permanent inline card. Eligibility lives in state.showWidgetPromo
+    // (never when a widget is hosted or previously dismissed); the 5s delay
+    // + one-shot flag live here, so it appears at most once per app open.
+    var showPromoSheet by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(5_000)
+        if (state.showWidgetPromo) showPromoSheet = true
+    }
+
+    if (showPromoSheet && state.showWidgetPromo) {
+        ModalBottomSheet(onDismissRequest = { showPromoSheet = false }) {
+            WidgetPromoSheetContent(
+                onAdd = viewModel::addWidget,
+                onDismiss = {
+                    showPromoSheet = false
+                    viewModel.dismissWidgetPromo() // "Not now" = permanent
+                }
+            )
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -156,15 +184,6 @@ private fun TimesContent(state: HomeUiState, viewModel: HomeViewModel) {
         if (state.fromCache) {
             Spacer(Modifier.height(8.dp))
             CachedBanner()
-        }
-
-        // PHASE-5.1: hidden forever once a widget is hosted or "Not now" tapped.
-        if (state.showWidgetPromo) {
-            Spacer(Modifier.height(12.dp))
-            WidgetPromoCard(
-                onAdd = viewModel::addWidget,
-                onDismiss = viewModel::dismissWidgetPromo
-            )
         }
 
         state.nextPrayer?.let { next ->
@@ -260,53 +279,48 @@ private fun CachedBanner() {
 }
 
 /**
- * PHASE-5.1: widget promo card — the Alerts-2 permission-prompt pattern
- * (DESIGN.md §6 BottomSheetPrompt, inlined as a card): dark surface, bold
- * headline, muted body, gold primary pill + quiet secondary action.
+ * PHASE-5.2: widget promo as a bottom-sheet popup (DESIGN.md Alerts-2
+ * pattern: icon-in-circle, bold headline, muted body, stacked gold pill +
+ * quiet secondary). Sheet chrome is Material's own.
  */
 @Composable
-private fun WidgetPromoCard(onAdd: () -> Unit, onDismiss: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = SurfaceDeep),
-        shape = RoundedCornerShape(24.dp)
+private fun WidgetPromoSheetContent(onAdd: () -> Unit, onDismiss: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .padding(bottom = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(PrimaryGold.copy(alpha = 0.15f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("🕌", style = MaterialTheme.typography.titleLarge)
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            stringResource(R.string.widget_promo_title),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(R.string.widget_promo_body),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.outline,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        Spacer(Modifier.height(16.dp))
+        PrimaryPill(stringResource(R.string.widget_promo_add), enabled = true, onClick = onAdd)
+        Spacer(Modifier.height(4.dp))
+        androidx.compose.material3.TextButton(onClick = onDismiss) {
             Text(
-                stringResource(R.string.widget_promo_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = androidx.compose.ui.graphics.Color.White
+                stringResource(R.string.widget_promo_dismiss),
+                color = MaterialTheme.colorScheme.outline
             )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                stringResource(R.string.widget_promo_body),
-                style = MaterialTheme.typography.bodySmall,
-                color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.7f)
-            )
-            Spacer(Modifier.height(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                androidx.compose.material3.Button(
-                    onClick = onAdd,
-                    shape = RoundedCornerShape(50),
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                        containerColor = PrimaryGold,
-                        contentColor = androidx.compose.ui.graphics.Color.White
-                    )
-                ) {
-                    Text(
-                        stringResource(R.string.widget_promo_add),
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                Spacer(Modifier.width(12.dp))
-                androidx.compose.material3.TextButton(onClick = onDismiss) {
-                    Text(
-                        stringResource(R.string.widget_promo_dismiss),
-                        color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.7f)
-                    )
-                }
-            }
         }
     }
 }

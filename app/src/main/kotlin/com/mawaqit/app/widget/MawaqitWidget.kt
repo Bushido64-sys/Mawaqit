@@ -47,34 +47,35 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
-// PHASE-5.1: the three responsive layout anchors (SizeMode.Responsive — the
-// system picks the best-fitting pre-rendered layout; smooth resize on
-// Android 12+, "largest that fits" fallback pre-12). Sizes follow the
-// developer.android.com build-ui pattern (minimum cell ≈ 70dp).
-private val WIDGET_COMPACT = DpSize(180.dp, 60.dp)   // 2x1: no ayah line
-private val WIDGET_REGULAR = DpSize(270.dp, 60.dp)   // 3x1: + ayah line
-private val WIDGET_LARGE = DpSize(270.dp, 125.dp)    // 3x2+: hero fonts + city
+// PHASE-5.2: anchors matched to REAL launcher grid slots (~70dp per cell with
+// margins). The 5.1 anchors were too wide (270dp > a real 3x2's ~210–240dp),
+// so the system ALWAYS fell back to compact — that's why the fonts never
+// grew. Real sizes → each layout actually gets selected in its slot.
+private val WIDGET_COMPACT = DpSize(130.dp, 60.dp)   // 2x1
+private val WIDGET_REGULAR = DpSize(195.dp, 60.dp)   // 3x1
+private val WIDGET_TALL    = DpSize(130.dp, 170.dp)  // 2x2: stacked, big name
+private val WIDGET_LARGE   = DpSize(195.dp, 170.dp)  // 3x2+: hero treatment
 
 /**
  * PHASE_5: the home screen widget (PHASE_5_WIDGET.md; colors from DESIGN.md
  * §1 — SurfaceDeep bg, PrimaryGold countdown, white text, same tokens as the
  * app's hero card).
  *
- * PHASE-5.1 (user feedback: content didn't reframe when resized): three
- * responsive layouts — 2x1 compact (prayer + time only), 3x1 regular (+ ayah
- * line), 3x2+ large (hero fonts, city label, 3-line ayah). Fonts scale with
- * the chosen layout, so bigger widget = bigger text, never stretched-small.
+ * PHASE-5.2: four responsive layouts with fonts that REALLY scale with size
+ * (user request: "way bigger") — 2x1 compact row, 3x1 regular row (+ayah),
+ * 2x2 tall stack (name on its own line), 3x2+ hero (28sp name, city label,
+ * 3-line ayah). Pattern per official docs: branch on LocalSize inside
+ * provideContent; system picks the best-fitting pre-rendered layout.
  *
  * Reads the next prayer + daily ayah DIRECTLY from the repositories at render
- * time (patched doc: no DataStore round-trip — Room is the single source of
- * truth, offline-first). Tap → opens the app. Redrawn by three independent
+ * time (offline-first). Tap → opens the app. Refreshed by three independent
  * nets: the 15-min WorkManager heartbeat, a one-shot at the exact moment the
  * shown prayer passes, and the system's own 30-min updatePeriodMillis.
  */
 class MawaqitWidget : GlanceAppWidget() {
 
     override val sizeMode = SizeMode.Responsive(
-        setOf(WIDGET_COMPACT, WIDGET_REGULAR, WIDGET_LARGE)
+        setOf(WIDGET_COMPACT, WIDGET_REGULAR, WIDGET_TALL, WIDGET_LARGE)
     )
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -131,14 +132,43 @@ private fun MawaqitWidgetContent(
     openAppIntent: Intent
 ) {
     val size = LocalSize.current
-    val isWide = size.width >= WIDGET_REGULAR.width   // room for the ayah line
-    val isLarge = size.height >= WIDGET_LARGE.height  // hero treatment
+    val isWide = size.width >= WIDGET_REGULAR.width    // 3x1 / 3x2
+    val isTall = size.height >= WIDGET_TALL.height     // 2x2 / 3x2
+    val isHero = isWide && isTall                      // 3x2+
 
-    // Fonts scale WITH the layout — bigger widget = bigger text (PHASE-5.1).
-    val nameSize = if (isLarge) 26.sp else if (isWide) 20.sp else 18.sp
-    val timeSize = if (isLarge) 20.sp else if (isWide) 16.sp else 14.sp
-    val labelSize = if (isLarge) 12.sp else 11.sp
-    val smallSize = if (isLarge) 12.sp else 11.sp
+    // Font scale per layout — PHASE-5.2 "way bigger" targets:
+    // name 16/20/24/28sp · time 13/16/18/22sp · left 10/11/13/15sp
+    val nameSize = when {
+        isHero -> 28.sp
+        isTall -> 24.sp
+        isWide -> 20.sp
+        else -> 16.sp
+    }
+    val timeSize = when {
+        isHero -> 22.sp
+        isTall -> 18.sp
+        isWide -> 16.sp
+        else -> 13.sp
+    }
+    val countdownSize = when {
+        isHero -> 15.sp
+        isTall -> 13.sp
+        isWide -> 11.sp
+        else -> 10.sp
+    }
+    val labelSize = when {
+        isHero -> 12.sp
+        isTall -> 11.sp
+        isWide -> 10.sp
+        else -> 9.sp
+    }
+    val ayahSize = if (isHero) 15.sp else if (isTall) 13.sp else 11.sp
+    val ayahMaxLines = when {
+        isHero -> 3
+        isTall -> 2
+        isWide -> 1
+        else -> 0 // no room in 2x1 — hidden by design (was the cut-off bug)
+    }
 
     val white = ColorProvider(Color.White)
     val whiteDim = ColorProvider(Color.White.copy(alpha = 0.7f))
@@ -151,8 +181,8 @@ private fun MawaqitWidgetContent(
             .cornerRadius(16.dp)
             .clickable(actionStartActivity(openAppIntent))
             .padding(
-                horizontal = if (isLarge) 16.dp else 14.dp,
-                vertical = if (isLarge) 12.dp else 8.dp
+                horizontal = if (isTall) 16.dp else 14.dp,
+                vertical = if (isTall) 14.dp else 8.dp
             ),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -161,9 +191,9 @@ private fun MawaqitWidgetContent(
                 text = noDataText,
                 style = TextStyle(color = white, fontSize = 13.sp)
             )
-        } else {
-            if (isLarge) {
-                // Header row: "Next Prayer" left, city right (large only).
+        } else if (isTall) {
+            // ── 2x2 tall stack / 3x2 hero: name owns its own line ──
+            if (isHero) {
                 Row(modifier = GlanceModifier.fillMaxWidth()) {
                     Text(
                         text = nextPrayerLabel,
@@ -177,20 +207,45 @@ private fun MawaqitWidgetContent(
                         )
                     }
                 }
-                Spacer(GlanceModifier.height(8.dp))
+            } else {
+                Text(
+                    text = nextPrayerLabel,
+                    style = TextStyle(color = whiteDim, fontSize = labelSize)
+                )
             }
-
+            Spacer(GlanceModifier.height(if (isHero) 8.dp else 4.dp))
+            Text(
+                text = prayerName,
+                style = TextStyle(color = white, fontSize = nameSize, fontWeight = FontWeight.Bold)
+            )
+            Spacer(GlanceModifier.height(4.dp))
+            Text(
+                text = next.timeStr,
+                style = TextStyle(color = gold, fontSize = timeSize, fontWeight = FontWeight.Bold)
+            )
+            Text(
+                text = countdownLine,
+                style = TextStyle(color = gold, fontSize = countdownSize)
+            )
+            Spacer(GlanceModifier.defaultWeight()) // push the ayah to the bottom
+            if (ayahMaxLines > 0) {
+                Text(
+                    text = ayahLine,
+                    maxLines = ayahMaxLines,
+                    style = TextStyle(color = whiteDim, fontSize = ayahSize)
+                )
+            }
+        } else {
+            // ── 2x1 compact / 3x1 regular: side-by-side row ──
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = GlanceModifier.defaultWeight()) {
-                    if (!isLarge) {
-                        Text(
-                            text = nextPrayerLabel,
-                            style = TextStyle(color = whiteDim, fontSize = labelSize)
-                        )
-                    }
+                    Text(
+                        text = nextPrayerLabel,
+                        style = TextStyle(color = whiteDim, fontSize = labelSize)
+                    )
                     Text(
                         text = prayerName,
                         style = TextStyle(color = white, fontSize = nameSize, fontWeight = FontWeight.Bold)
@@ -203,21 +258,16 @@ private fun MawaqitWidgetContent(
                     )
                     Text(
                         text = countdownLine,
-                        style = TextStyle(color = gold, fontSize = smallSize)
+                        style = TextStyle(color = gold, fontSize = countdownSize)
                     )
                 }
             }
-
-            if (isLarge) {
-                Spacer(GlanceModifier.defaultWeight()) // push ayah to the bottom
-            } else {
+            if (ayahMaxLines > 0) {
                 Spacer(GlanceModifier.height(4.dp))
-            }
-            if (isWide) {
                 Text(
                     text = ayahLine,
-                    maxLines = if (isLarge) 3 else 1,
-                    style = TextStyle(color = whiteDim, fontSize = smallSize)
+                    maxLines = ayahMaxLines,
+                    style = TextStyle(color = whiteDim, fontSize = ayahSize)
                 )
             }
         }
