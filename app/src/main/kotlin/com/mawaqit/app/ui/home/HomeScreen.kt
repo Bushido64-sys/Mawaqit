@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -145,6 +146,7 @@ private fun LocationSetupContent(
 
 // ── state 2: the real home screen ────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class) // ModalBottomSheet is experimental in M3
 @Composable
 private fun TimesContent(state: HomeUiState, viewModel: HomeViewModel) {
     val timings = state.timings ?: return
