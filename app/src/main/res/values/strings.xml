@@ -33,6 +33,11 @@
     <string name="content_desc_marked_prayed">Marked as prayed</string>
     <string name="content_desc_not_prayed">Not yet prayed</string>
 
+    <!-- Widget (PHASE_5) -->
+    <string name="widget_description">Next prayer time and countdown</string>
+    <string name="widget_no_data">Open Mawaqit to load prayer times</string>
+    <string name="widget_in">in %1$s</string>
+
     <!-- Navigation -->
     <string name="tab_home">Home</string>
     <string name="tab_quran">Quran</string>

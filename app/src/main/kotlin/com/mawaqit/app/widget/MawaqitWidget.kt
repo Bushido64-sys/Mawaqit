@@ -1,0 +1,167 @@
+package com.mawaqit.app.widget
+
+import android.content.Context
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.glance.GlanceId
+import androidx.glance.GlanceModifier
+import androidx.glance.action.clickable
+import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.cornerRadius
+import androidx.glance.appwidget.provideContent
+import androidx.glance.background
+import androidx.glance.layout.Alignment
+import androidx.glance.layout.Column
+import androidx.glance.layout.Row
+import androidx.glance.layout.Spacer
+import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
+import androidx.glance.layout.padding
+import androidx.glance.text.FontWeight
+import androidx.glance.text.Text
+import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
+import com.mawaqit.app.MainActivity
+import com.mawaqit.app.R
+import com.mawaqit.app.data.model.NextPrayer
+import com.mawaqit.app.data.repository.AyahRepository
+import com.mawaqit.app.data.repository.PrayerRepository
+import com.mawaqit.app.ui.components.prayerNameRes
+import com.mawaqit.app.ui.theme.PrimaryGold
+import com.mawaqit.app.ui.theme.SurfaceDeep
+import com.mawaqit.app.util.formatCountdown
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+/**
+ * PHASE_5: the 2x1 home screen widget (PHASE_5_WIDGET.md; colors from
+ * DESIGN.md §1 — SurfaceDeep bg, PrimaryGold countdown, white text, same
+ * tokens as the app's hero card).
+ *
+ * Reads the next prayer + daily ayah DIRECTLY from the repositories at render
+ * time (patched doc: no DataStore round-trip — Room is the single source of
+ * truth, offline-first). Tap → opens the app. Redrawn by three independent
+ * nets: the 15-min WorkManager heartbeat, a one-shot at the exact moment the
+ * shown prayer passes, and the system's own 30-min updatePeriodMillis.
+ */
+class MawaqitWidget : GlanceAppWidget() {
+
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val entry = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            WidgetEntryPoint::class.java
+        )
+        // provideGlance runs on the main thread — DB reads move to IO (official docs).
+        val repo = entry.prayerRepository()
+        val next = withContext(Dispatchers.IO) {
+            repo.getTodayPrayerTimes()?.let { repo.getNextPrayer(it) }
+        }
+        val ayah = withContext(Dispatchers.IO) { entry.ayahRepository().getDailyAyah() }
+
+        // Resolve all strings OUTSIDE composition — RemoteViews contexts have
+        // no stringResource; Context.getString is the safe path.
+        val nextPrayerLabel = context.getString(R.string.next_prayer)
+        val prayerName = next?.let { context.getString(prayerNameRes(it.name)) }.orEmpty()
+        val countdownLine = next?.let {
+            context.getString(R.string.widget_in, formatCountdown(it.timeMillis - System.currentTimeMillis()))
+        }.orEmpty()
+        val noDataText = context.getString(R.string.widget_no_data)
+        val ayahLine = "${ayah.reference} · ${ayah.arabic}"
+
+        provideContent {
+            MawaqitWidgetContent(
+                next = next,
+                nextPrayerLabel = nextPrayerLabel,
+                prayerName = prayerName,
+                countdownLine = countdownLine,
+                noDataText = noDataText,
+                ayahLine = ayahLine
+            )
+        }
+    }
+}
+
+@Composable
+private fun MawaqitWidgetContent(
+    next: NextPrayer?,
+    nextPrayerLabel: String,
+    prayerName: String,
+    countdownLine: String,
+    noDataText: String,
+    ayahLine: String
+) {
+    val white = ColorProvider(Color.White)
+    val whiteDim = ColorProvider(Color.White.copy(alpha = 0.7f))
+    val gold = ColorProvider(PrimaryGold)
+
+    Column(
+        modifier = GlanceModifier
+            .fillMaxSize()
+            .background(ColorProvider(SurfaceDeep))
+            .cornerRadius(16.dp)
+            .clickable(actionStartActivity<MainActivity>())
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (next == null) {
+            Text(
+                text = noDataText,
+                style = TextStyle(color = white, fontSize = 13.sp)
+            )
+        } else {
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = GlanceModifier.defaultWeight()) {
+                    Text(
+                        text = nextPrayerLabel,
+                        style = TextStyle(color = whiteDim, fontSize = 11.sp)
+                    )
+                    Text(
+                        text = prayerName,
+                        style = TextStyle(color = white, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = next.timeStr,
+                        style = TextStyle(color = gold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    )
+                    Text(
+                        text = countdownLine,
+                        style = TextStyle(color = gold, fontSize = 11.sp)
+                    )
+                }
+            }
+            Spacer(GlanceModifier.height(4.dp))
+            Text(
+                text = ayahLine,
+                maxLines = 1,
+                style = TextStyle(color = whiteDim, fontSize = 11.sp)
+            )
+        }
+    }
+}
+
+/** Manifest-registered receiver (APPWIDGET_UPDATE + provider meta-data). */
+class MawaqitWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = MawaqitWidget()
+}
+
+/** Hilt bridge: the widget is instantiated by the OS, not by Hilt. */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface WidgetEntryPoint {
+    fun prayerRepository(): PrayerRepository
+    fun ayahRepository(): AyahRepository
+}

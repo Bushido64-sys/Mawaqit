@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.mawaqit.app.alarm.DailyAlarmWorker
+import com.mawaqit.app.widget.WidgetUpdateWorker
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -24,6 +25,9 @@ class MawaqitApplication : Application(), Configuration.Provider {
         // window forward every day, offline — alarms keep firing even if the
         // app is never opened. KEEP policy = never duplicates. Idempotent.
         DailyAlarmWorker.ensureScheduled(this)
+        // PHASE_5: 15-min widget heartbeat (persisted by WorkManager across
+        // reboots; KEEP = idempotent).
+        WidgetUpdateWorker.ensureScheduled(this)
     }
 
     override val workManagerConfiguration: Configuration

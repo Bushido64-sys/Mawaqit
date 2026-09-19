@@ -17,6 +17,7 @@ import com.mawaqit.app.data.repository.AyahRepository
 import com.mawaqit.app.data.repository.SalahRepository
 import com.mawaqit.app.data.repository.PrayerRepository
 import com.mawaqit.app.util.LocationHelper
+import com.mawaqit.app.widget.WidgetUpdateWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -259,6 +260,8 @@ class HomeViewModel @Inject constructor(
                 }
                 // Every app open re-arms the 7-day plan from the offline cache.
                 refreshManager.refreshAlarmsFromCache()
+                // PHASE_5: opening the app refreshes the widget immediately.
+                WidgetUpdateWorker.refreshNow(appContext)
             }
         }
     }
