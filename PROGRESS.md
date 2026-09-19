@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-19 — [PHASE-4] phone test PASSED (user: rollover + gold highlight live, notification rung). Reinstall-mystery investigated: instant data after reinstall = Android Auto Backup (allowBackup=true, working as designed, NO internet call — verified in refreshIfNeeded). One-frame setup-screen flash FIXED (needsLocation now tri-state with 'checking' state). Branded animated splash = Phase 9 by design.**
+> **Last updated: 2026-09-19 — [PHASE-5] CODE COMPLETE (commit dcca709): 2x1 Glance widget (next prayer + gold countdown + ayah line, tap opens app), triple refresh nets (15-min heartbeat + prayer-pass one-shot + system 30-min cycle). Guidebook PHASE_5_WIDGET.md patched pre-code (missing receiver/XML wiring, dead DESIGN §6 ref, redundant DataStore round-trip). Build + phone test pending.**
 
 ---
 
@@ -97,7 +97,7 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
 | 2 | Prayer times (AlAdhan API + Room + repository) | ✅ COMPLETE — 5/5 phone checks passed 2026-09-17 |
 | 3 | Alarms (AlarmReceiver, BootReceiver, AzanService) | ✅ PASSED — phone test 6/6 on 2026-09-18 (silent stubs; 5-min dismiss verified in code) |
 | 4 | Home screen UI | ✅ PASSED 2026-09-19 — user confirmed live rollover, gold current-prayer highlight, azan notification. Bonus fix: one-frame setup flash on cold start (needsLocation tri-state) |
-| 5 | Widget (Glance; lock-screen = opportunistic bonus) | not started |
+| 5 | Widget (Glance; lock-screen = opportunistic bonus) | 🚧 CODE COMPLETE 2026-09-19 (commit dcca709) — needs build + phone test |
 | 6 | Quran (UmmahAPI — endpoints re-verified live in Sept 2026) | not started |
 | 7 | Qibla | not started |
 | 8 | Settings (DataStore, Urdu, per-app language) | not started |
@@ -230,6 +230,22 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
   system splash (Theme.Mawaqit.Splash, blue + launcher icon) IS there — just
   fast because Phase 1 init is light; the branded animated ~5s splash is
   deliberately Phase 9 (needs user's ≤4MB video). Rebuild carries the flash fix.
+- **2026-09-19 — Session 8:** [PHASE-5] CODE COMPLETE (commit dcca709, 8 files).
+  Glance 2x1 widget: MawaqitWidget.kt (SurfaceDeep bg + PrimaryGold countdown,
+  DESIGN.md §1 tokens; reads next prayer + ayah from Room DIRECTLY via Hilt
+  EntryPoint at render time — patched doc dropped the DataStore round-trip),
+  WidgetUpdateWorker.kt (15-min heartbeat + prayer-pass one-shot at
+  timeMillis+1s, REPLACE policy; doWork re-arms one-shot as side effect →
+  survives reboots), MawaqitWidgetReceiver + res/xml/mawaqit_widget_info.xml
+  (updatePeriodMillis=30min = third net), PrayerNameLabel gained non-compose
+  prayerNameRes(). Hooks: Application.ensureScheduled, HomeViewModel.loadTimes
+  → refreshNow. API research done BEFORE code (official Glance docs: exported
+  =false receiver, loading layout, actionStartActivity<MainActivity>). Self-
+  review caught: stray defaultWeight import (member extension — build breaker).
+  GUIDEBOOK PATCHED pre-code: PHASE_5_WIDGET.md (wiring missing from file list,
+  DESIGN.md §6 cross-ref dead — widget spec doesn't exist, DataStore keys
+  unnecessary). **Next: Codespaces build → phone test (picker/refresh/tap/
+  reboot/lock-screen-bonus) → Phase 6 (Quran).**
 
 ## PHASE-2 IMPLEMENTATION NOTES (for future debugging)
 - New files: data/model/PrayerTimings.kt, data/api/Aladhan{Models,ApiService}.kt,
