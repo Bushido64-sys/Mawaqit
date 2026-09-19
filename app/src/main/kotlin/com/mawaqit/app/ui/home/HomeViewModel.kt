@@ -36,7 +36,10 @@ import kotlinx.coroutines.launch
  * they were temporary.
  */
 data class HomeUiState(
-    val needsLocation: Boolean = true,   // no saved coords yet → show setup
+    // null = still checking whether a location is saved (avoids flashing the
+    // setup screen for a frame before the async prefs read lands — user report).
+    // true = no saved location → show setup; false = show the home screen.
+    val needsLocation: Boolean? = null,
     val isLoading: Boolean = true,
     val timings: PrayerTimings? = null,
     val nextPrayer: NextPrayer? = null,
@@ -75,7 +78,7 @@ class HomeViewModel @Inject constructor(
             if (repository.hasSavedLocation()) {
                 loadTimes()
             } else {
-                _state.update { it.copy(isLoading = false) } // show setup buttons
+                _state.update { it.copy(isLoading = false, needsLocation = true) } // show setup buttons
             }
         }
         observeAlarmToggles()

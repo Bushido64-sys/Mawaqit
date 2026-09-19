@@ -72,7 +72,9 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     }
 
     when {
-        state.needsLocation -> LocationSetupContent(
+        // needsLocation == null → still checking saved prefs: show the spinner,
+        // NOT the setup screen (prevents the one-frame "Assalamualaikum" flash).
+        state.needsLocation == true -> LocationSetupContent(
             isLoading = state.isLoading,
             error = state.error,
             onUseLocation = {
