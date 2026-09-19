@@ -29,8 +29,11 @@ and promo card wanted as a timed popup instead. [PHASE-5.2] (d875a77)
 fixes both: real-grid anchors (130/195 x 60/170), NEW tall 2x2 layout, font
 ladder name 16/20/24/28sp · time 13/16/18/22sp · countdown 10/11/13/15sp ·
 ayah 11/13/15sp (hidden at 2x1, 1 line 3x1, 2 lines 2x2, 3 lines 3x2+),
-promo → ModalBottomSheet after 5s (once per app open). **AWAITING: user
-rebuild + test results → then Phase 6 (Quran) on explicit OK.**
+promo → ModalBottomSheet after 5s (once per app open). Two build fixes
+already landed for 5.2 (user-reported boxes, both fixed): LocalSize
+package (5b4fcd3) and @OptIn for the experimental M3 ModalBottomSheet
+(4a897e6) — the NEXT rebuild should be green. **AWAITING: user rebuild +
+test results → then Phase 6 (Quran) on explicit OK.**
 Real azan MP3s still pending (assignment/05); splash video pending
 (assignment/06, needed only by Phase 9).
 
