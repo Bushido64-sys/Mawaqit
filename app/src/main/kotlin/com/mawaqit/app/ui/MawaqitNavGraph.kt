@@ -39,11 +39,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.navArgument
 import com.mawaqit.app.R
 import com.mawaqit.app.ui.home.HomeScreen
+import com.mawaqit.app.ui.quran.QuranListScreen
+import com.mawaqit.app.ui.quran.SurahDetailScreen
 import com.mawaqit.app.ui.theme.PrimaryGold
 
 /**
@@ -71,10 +75,13 @@ private val TABS = listOf(
 fun MawaqitNavGraph(navController: NavHostController) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    // Reading screen is immersive: hide the pill bar on surah/{number} (DESIGN.md §4/§5).
+    val showBottomBar = currentRoute?.startsWith("surah/") != true
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
+            if (!showBottomBar) return@Scaffold
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -133,9 +140,17 @@ fun MawaqitNavGraph(navController: NavHostController) {
             modifier = Modifier.padding(padding)
         ) {
             composable("home") { HomeScreen() }
-            composable("quran") { ComingSoonScreen(stringResource(R.string.tab_quran), 6) }
+            composable("quran") {
+                QuranListScreen(onSurahClick = { number -> navController.navigate("surah/$number") })
+            }
             composable("qibla") { ComingSoonScreen(stringResource(R.string.tab_qibla), 7) }
             composable("settings") { ComingSoonScreen(stringResource(R.string.tab_settings), 8) }
+            composable(
+                route = "surah/{number}",
+                arguments = listOf(navArgument("number") { type = NavType.IntType })
+            ) {
+                SurahDetailScreen(onBack = { navController.popBackStack() })
+            }
         }
     }
 }

@@ -64,6 +64,9 @@ object PrefKeys {
 
     // Widget promo card (PHASE-5.1) — user tapped "Not now" (or added via pin)
     const val WIDGET_PROMO_DISMISSED = "widget_promo_dismissed" // Boolean
+
+    // Quran (PHASE_6) — comma list of surah numbers where bismillah_pre == false
+    const val SURAH_NO_BISMILLAH = "surah_no_bismillah" // String e.g. "1,9"
 }
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "mawaqit_prefs")
@@ -209,5 +212,21 @@ class PrefsRepository @Inject constructor(
 
     suspend fun setWidgetPromoDismissed(dismissed: Boolean) {
         store.edit { it[booleanPreferencesKey(PrefKeys.WIDGET_PROMO_DISMISSED)] = dismissed }
+    }
+
+    // ── Quran: bismillah_pre flags (PHASE_6) ────────────────────────────────
+
+    /** Surah numbers where the Bismillah header must NOT be shown (1, 9). */
+    suspend fun getSurahsWithoutBismillahOnce(): Set<Int> =
+        store.data.first()[stringPreferencesKey(PrefKeys.SURAH_NO_BISMILLAH)]
+            ?.split(",")
+            ?.mapNotNull { it.trim().toIntOrNull() }
+            ?.toSet()
+            ?: emptySet()
+
+    suspend fun setSurahsWithoutBismillah(numbers: Set<Int>) {
+        store.edit {
+            it[stringPreferencesKey(PrefKeys.SURAH_NO_BISMILLAH)] = numbers.sorted().joinToString(",")
+        }
     }
 }

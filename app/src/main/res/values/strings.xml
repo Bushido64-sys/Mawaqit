@@ -56,6 +56,12 @@
     <string name="medinan">Medinan</string>
     <string name="verses">Verses</string>
     <string name="search_surah">Search Surah…</string>
+    <string name="content_desc_back">Back</string>
+    <string name="bismillah">بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ</string>
+    <!-- Display-mode pills: the toggle picks what shows BESIDES the always-on Arabic -->
+    <string name="mode_arabic">Arabic</string>
+    <string name="mode_arabic_english">English</string>
+    <string name="mode_arabic_urdu">Urdu</string>
 
     <!-- Qibla -->
     <string name="qibla_direction">Qibla Direction</string>
