@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-19 — [PHASE-5] widget BUILT + user-tested (visuals pass; build fix c515dda: explicit-Intent actionStartActivity). [PHASE-5.1] CODE COMPLETE (commit 9e25dba): SizeMode.Responsive 3 layouts (2x1/3x1/3x2+, fonts scale with size) + add-widget promo card (system requestPinAppWidget dialog). Build + re-test pending.**
+> **Last updated: 2026-09-19 — [PHASE-5.2] CODE COMPLETE (commit d875a77): REAL-grid anchors (5.1's 270dp anchor never fit a real 3x2 → compact fallback → fonts never grew; now 130/195 x 60/170) + 4th tall layout (2x2) + "way bigger" font ladder (name 16/20/24/28sp) + promo moved to a 5s-timed ModalBottomSheet popup. Build + re-test pending.**
 
 ---
 
@@ -97,7 +97,7 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
 | 2 | Prayer times (AlAdhan API + Room + repository) | ✅ COMPLETE — 5/5 phone checks passed 2026-09-17 |
 | 3 | Alarms (AlarmReceiver, BootReceiver, AzanService) | ✅ PASSED — phone test 6/6 on 2026-09-18 (silent stubs; 5-min dismiss verified in code) |
 | 4 | Home screen UI | ✅ PASSED 2026-09-19 — user confirmed live rollover, gold current-prayer highlight, azan notification. Bonus fix: one-frame setup flash on cold start (needsLocation tri-state) |
-| 5 | Widget (Glance; lock-screen = opportunistic bonus) | 🚧 built + user-tested; [PHASE-5.1] responsive layouts + promo card CODE COMPLETE (9e25dba) — needs build + re-test |
+| 5 | Widget (Glance; lock-screen = opportunistic bonus) | 🚧 [PHASE-5.2] real-grid anchors + font ladder + timed promo popup CODE COMPLETE (d875a77) — needs build + re-test |
 | 6 | Quran (UmmahAPI — endpoints re-verified live in Sept 2026) | not started |
 | 7 | Qibla | not started |
 | 8 | Settings (DataStore, Urdu, per-app language) | not started |
@@ -258,8 +258,17 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
   (canPin checked, API 26+), async-dialog outcome verified via delayed
   getGlanceIds re-check (NOT dismissed on dialog open — "No" is never
   punished), "Not now" → WIDGET_PROMO_DISMISSED pref, card auto-hides when
-  widgets hosted. Guidebook PHASE-5.1 addendum added. **Next: build + re-test
-  (resize behavior + promo card) → Phase 6 (Quran).**
+  widgets hosted. Guidebook PHASE-5.1 addendum added. Build fix: LocalSize
+  lives in androidx.glance (verified in androidx source, 5b4fcd3). User test:
+  widget responsive BUT fonts never grew (root cause: 5.1 anchors wider than
+  real grid slots → compact fallback every time) + wanted inline card as a
+  timed popup instead. [PHASE-5.2] (d875a77): anchors 130/195 x 60/170 (real
+  ~70dp cells), NEW tall layout for 2x2 (stacked, 24sp name), hero 3x2+ =
+  28sp name / 22sp time / 15sp countdown / 15sp ayah 3 lines + city; promo
+  → ModalBottomSheet after 5s delay, once per app open (state machine:
+  showPromoSheet flag + LaunchedEffect delay; eligibility unchanged).
+  Guidebook PHASE-5.2 addendum added. **Next: build + re-test (fonts grow
+  with size, popup appears at 5s) → Phase 6 (Quran).**
 
 ## PHASE-2 IMPLEMENTATION NOTES (for future debugging)
 - New files: data/model/PrayerTimings.kt, data/api/Aladhan{Models,ApiService}.kt,
