@@ -60,16 +60,21 @@ fun getCurrentPrayerStatus(
         PrayerName.ISHA to timings.isha
     )
     val result = LinkedHashMap<PrayerName, PrayerStatus>()
-    var currentSet = false
-    // iterate latest→earliest for finding CURRENT, then fill the map in order
-    val entries = ordered.entries.toList()
-    for ((name, timeStr) in entries) {
+    var lastPassed: PrayerName? = null
+    for ((name, timeStr) in ordered) {
         val millis = parseTimeToMillis(timeStr, date)
-        result[name] = when {
-            millis > nowMillis -> PrayerStatus.UPCOMING
-            !currentSet -> { currentSet = true; PrayerStatus.CURRENT }
-            else -> PrayerStatus.PRAYED
+        if (millis > nowMillis) {
+            result[name] = PrayerStatus.UPCOMING
+        } else {
+            result[name] = PrayerStatus.PRAYED
+            lastPassed = name // most recent prayer whose time has begun
         }
     }
+    // CURRENT = the prayer period the user is in right now — the most recent
+    // prayer that has passed (Fajr stays gold until Dhuhr's time arrives).
+    // Bug fix (user report): the old loop flagged the FIRST passed prayer and
+    // never advanced, so the gold "current" highlight was stuck on Fajr all day.
+    // (The UI suppresses the gold highlight when the row is already prayed.)
+    lastPassed?.let { result[it] = PrayerStatus.CURRENT }
     return result
 }

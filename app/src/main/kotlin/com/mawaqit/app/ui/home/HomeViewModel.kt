@@ -90,7 +90,17 @@ class HomeViewModel @Inject constructor(
     private fun startTicker() {
         viewModelScope.launch {
             while (true) {
-                _state.update { it.copy(nowMillis = System.currentTimeMillis()) }
+                val now = System.currentTimeMillis()
+                // Real-time rollover (user-reported bug: hero froze at 00:00:00
+                // after the prayer passed, until the app was reopened): the moment
+                // the shown next-prayer time passes, recompute it from today's row.
+                val timings = _state.value.timings
+                val shownNext = _state.value.nextPrayer
+                if (timings != null && shownNext != null && shownNext.timeMillis <= now) {
+                    val next = repository.getNextPrayer(timings)
+                    _state.update { it.copy(nextPrayer = next) }
+                }
+                _state.update { it.copy(nowMillis = now) }
                 val today = java.time.LocalDate.now().toString()
                 if (today != loadedDate && loadedDate != null) {
                     loadTimes() // day changed → fetch today's row, re-arm alarms
