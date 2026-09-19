@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-19 — [PHASE-5.2] CODE COMPLETE (commit d875a77): REAL-grid anchors (5.1's 270dp anchor never fit a real 3x2 → compact fallback → fonts never grew; now 130/195 x 60/170) + 4th tall layout (2x2) + "way bigger" font ladder (name 16/20/24/28sp) + promo moved to a 5s-timed ModalBottomSheet popup. ⚠️ SESSION CLOSED BEFORE THIS BUILD WAS TESTED — next session MUST ask for the PHASE-5.2 test results FIRST (see NEXT SESSION section).**
+> **Last updated: 2026-09-19 — [PHASE-6] CODE COMPLETE (commit 0fdbb31, 16 files, +1129): Quran reader — UmmahAPI stack, 114-Surah list + search, reading screen (RTL Arabic/Urdu, mode toggle, Bismillah iff flag), live Ayah of the Day, VideoBackground w/ gradient fallback. ⚠️ NOT YET BUILT/TESTED BY USER — next session MUST ask for the PHASE-6 build + test results FIRST (checklist below).**
 
 ---
 
@@ -14,28 +14,53 @@ Android prayer-times + alarm app (Kotlin, Compose, offline-first), built phase b
 from a detailed guidebook (`mawaqit-guidebook/`), with the user learning as we go.
 
 ## WHERE WE ARE RIGHT NOW
-**⚠️ SESSION CLOSED 2026-09-19 with [PHASE-5.2] BUILT BUT NEVER PHONE-TESTED.**
-The next session OPENS by asking the user for the PHASE-5.2 test results —
-no new work before that (user's Rule 1).
+**Phases 0–5 ✅ ALL USER-PASSED.** Phase 5 finale (2026-09-19): user tested
+[PHASE-5.2] on device — "the widget looks better than before" — fonts +
+responsive layouts + 5s popup all verified.
 
-**Where the app stands:** Phases 0–4 ✅ done and user-passed (alarms are
-7-day fire-and-forget, bulletproofed, verified on device). Phase 5 widget:
-core (dcca709) user-tested — picker, render, data all confirmed visually;
-tap-opens-app / reboot survival / lock-screen bonus were never explicitly
-reported (confirm next session, cheap). [PHASE-5.1] (9e25dba) user-tested →
-two feedback items: fonts didn't grow when resized (root cause found: 5.1
-anchors wider than real grid slots → system always fell back to compact)
-and promo card wanted as a timed popup instead. [PHASE-5.2] (d875a77)
-fixes both: real-grid anchors (130/195 x 60/170), NEW tall 2x2 layout, font
-ladder name 16/20/24/28sp · time 13/16/18/22sp · countdown 10/11/13/15sp ·
-ayah 11/13/15sp (hidden at 2x1, 1 line 3x1, 2 lines 2x2, 3 lines 3x2+),
-promo → ModalBottomSheet after 5s (once per app open). Two build fixes
-already landed for 5.2 (user-reported boxes, both fixed): LocalSize
-package (5b4fcd3) and @OptIn for the experimental M3 ModalBottomSheet
-(4a897e6) — the NEXT rebuild should be green. **AWAITING: user rebuild +
-test results → then Phase 6 (Quran) on explicit OK.**
-Real azan MP3s still pending (assignment/05); splash video pending
-(assignment/06, needed only by Phase 9).
+**NOW: [PHASE-6] built & pushed (0fdbb31) — AWAITING USER BUILD + TEST.**
+Open the next session by asking for these results BEFORE any new work:
+| # | Test | Expect |
+|---|------|--------|
+| 1 | Quran tab | 114 rows: number chip, English+meaning, Arabic right |
+| 2 | Search "Al" / Arabic text | List filters live |
+| 3 | Open Al-Fatihah (1) | NO Bismillah header (it IS verse 1) |
+| 4 | Open any other surah, e.g. 2/12 | Bismillah header shows; Arabic RTL + ﴿١﴾ markers |
+| 5 | Mode toggle | Arabic-only / +English / +Urdu all render |
+| 6 | Reading screen | Blue gradient bg (video pending), no bottom pill, back arrow works |
+| 7 | Airplane mode → reopen surah 2 | Loads instantly from cache (offline-first) |
+| 8 | Home Ayah card | Still works; now rotates from LIVE random verses online |
+| 9 | Regression: alarms/widget | Azan + widget unaffected |
+Known safe caveats to tell the user: reading background is a GRADIENT by
+design until they deliver splash_video.mp4 (assignment/06) — then the video
+switches on by itself (VideoBackground probes by name, zero code change).
+First-ever surah open needs internet; every later open is offline.
+
+**PHASE-6 implementation facts (for future sessions):**
+- UmmahAPI 2nd Retrofit in NetworkModule (base https://ummahapi.com/api/).
+- QuranRepository: list bootstrap once (surah_list count gate), lazy
+  per-surah ayah caching, bismillah_pre flags learned into DataStore key
+  surah_no_bismillah ("1,9") — DB schema v1 UNTOUCHED, no migration.
+- Footnote digits stripped at RENDER layer only (QuranText.stripFootnoteMarkers,
+  Regex from API_REFERENCE.md 2.2); ornate ayah marker via QuranText.arabicMarker
+  (Arabic-Indic digits in ﴿﴾).
+- AyahRepository now composes Endpoint 2.3 (random surah ≤60 verses, ≤3 retries,
+  random verse) with full fallback chain (today-cache → last cache → FALLBACK_AYAHS).
+- Detail route "surah/{number}" (NavType.Int; SavedStateHandle.get("number"))
+  lives inside the same NavHost but the pill bar is hidden via
+  currentRoute.startsWith("surah/") check (return@Scaffold in bottomBar).
+- Real azan MP3s landed earlier (res/raw/ has all 3); splash video still
+  pending (assignment/06).
+
+## GLANCE GOTCHAS (Phase 5, all fixed & verified — do not repeat)
+1. actionStartActivity<Activity>() generic shorthand DOES NOT exist in Glance
+   1.1.0 — build an explicit Intent and call actionStartActivity(intent, params).
+2. LocalSize lives in androidx.glance (NOT androidx.glance.appwidget).
+3. defaultWeight() is a Row/Column-scope member extension — never importable.
+4. SizeMode.Responsive: sizeMode property + branch on LocalSize.current;
+   anchors must match REAL launcher cell math (~70dp cells; our final:
+   130/195dp wide × 60/170dp tall) or the layout silently never gets picked.
+5. M3 ModalBottomSheet is experimental — @OptIn(ExperimentalMaterial3Api::class).
 
 (PHASE-3-era detail below kept for history.)
 
