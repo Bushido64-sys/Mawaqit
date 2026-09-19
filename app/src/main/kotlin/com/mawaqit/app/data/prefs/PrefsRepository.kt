@@ -61,6 +61,9 @@ object PrefKeys {
     const val DAILY_AYAH_TEXT_UR    = "daily_ayah_text_ur"
     const val DAILY_AYAH_REFERENCE  = "daily_ayah_reference"
     const val DAILY_AYAH_FETCH_DATE = "daily_ayah_fetch_date"
+
+    // Widget promo card (PHASE-5.1) — user tapped "Not now" (or added via pin)
+    const val WIDGET_PROMO_DISMISSED = "widget_promo_dismissed" // Boolean
 }
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "mawaqit_prefs")
@@ -197,5 +200,14 @@ class PrefsRepository @Inject constructor(
 
     suspend fun setActiveAlarms(entries: Set<String>) {
         store.edit { it[stringSetPreferencesKey(PrefKeys.ACTIVE_ALARMS)] = entries }
+    }
+
+    // ── Widget promo card (PHASE-5.1) ───────────────────────────────────────
+
+    val widgetPromoDismissed: Flow<Boolean> =
+        store.data.map { it[booleanPreferencesKey(PrefKeys.WIDGET_PROMO_DISMISSED)] ?: false }
+
+    suspend fun setWidgetPromoDismissed(dismissed: Boolean) {
+        store.edit { it[booleanPreferencesKey(PrefKeys.WIDGET_PROMO_DISMISSED)] = dismissed }
     }
 }

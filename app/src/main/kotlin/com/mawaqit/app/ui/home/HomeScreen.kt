@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -39,6 +40,7 @@ import com.mawaqit.app.ui.components.LoadingState
 import com.mawaqit.app.ui.components.NextPrayerCard
 import com.mawaqit.app.ui.components.PrayerRow
 import com.mawaqit.app.ui.theme.PrimaryGold
+import com.mawaqit.app.ui.theme.SurfaceDeep
 import com.mawaqit.app.util.PrayerStatus
 import com.mawaqit.app.util.formatCountdown
 import com.mawaqit.app.util.parseTimeToMillis
@@ -50,6 +52,8 @@ import java.time.LocalDate
  * The Phase 2/3 temporary screen (test buttons, big switches) is replaced.
  * Kept from Phase 3: the one-time notification permission request and the
  * per-prayer alarm switches (now living on the rows where they belong).
+ * PHASE-5.1: widget promo card (Alerts-2 prompt pattern) — one-tap system
+ * pin dialog, auto-hides once a widget is hosted or permanently dismissed.
  */
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
@@ -154,6 +158,15 @@ private fun TimesContent(state: HomeUiState, viewModel: HomeViewModel) {
             CachedBanner()
         }
 
+        // PHASE-5.1: hidden forever once a widget is hosted or "Not now" tapped.
+        if (state.showWidgetPromo) {
+            Spacer(Modifier.height(12.dp))
+            WidgetPromoCard(
+                onAdd = viewModel::addWidget,
+                onDismiss = viewModel::dismissWidgetPromo
+            )
+        }
+
         state.nextPrayer?.let { next ->
             Spacer(Modifier.height(16.dp))
             NextPrayerCard(
@@ -243,6 +256,58 @@ private fun CachedBanner() {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+/**
+ * PHASE-5.1: widget promo card — the Alerts-2 permission-prompt pattern
+ * (DESIGN.md §6 BottomSheetPrompt, inlined as a card): dark surface, bold
+ * headline, muted body, gold primary pill + quiet secondary action.
+ */
+@Composable
+private fun WidgetPromoCard(onAdd: () -> Unit, onDismiss: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = SurfaceDeep),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text(
+                stringResource(R.string.widget_promo_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = androidx.compose.ui.graphics.Color.White
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(R.string.widget_promo_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.7f)
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.Button(
+                    onClick = onAdd,
+                    shape = RoundedCornerShape(50),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = PrimaryGold,
+                        contentColor = androidx.compose.ui.graphics.Color.White
+                    )
+                ) {
+                    Text(
+                        stringResource(R.string.widget_promo_add),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                androidx.compose.material3.TextButton(onClick = onDismiss) {
+                    Text(
+                        stringResource(R.string.widget_promo_dismiss),
+                        color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
     }
 }
 

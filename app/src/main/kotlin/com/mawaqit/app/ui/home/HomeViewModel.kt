@@ -17,7 +17,10 @@ import com.mawaqit.app.data.repository.AyahRepository
 import com.mawaqit.app.data.repository.SalahRepository
 import com.mawaqit.app.data.repository.PrayerRepository
 import com.mawaqit.app.util.LocationHelper
+import com.mawaqit.app.widget.MawaqitWidget
+import com.mawaqit.app.widget.WidgetPromo
 import com.mawaqit.app.widget.WidgetUpdateWorker
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -50,6 +53,8 @@ data class HomeUiState(
     val salahLog: Map<PrayerName, Boolean> = emptyMap(),   // prayed checkmarks
     val alarmStates: Map<PrayerName, Boolean> = emptyMap(),// per-prayer alarm switches
     val dailyAyah: DailyAyah? = null,
+    val widgetAdded: Boolean = false,     // ≥1 Mawaqit widget hosted (PHASE-5.1)
+    val showWidgetPromo: Boolean = false, // promo card visible (never once dismissed/added)
     val nowMillis: Long = System.currentTimeMillis()       // 1s ticker for countdown
 )
 
@@ -84,6 +89,7 @@ class HomeViewModel @Inject constructor(
         }
         observeAlarmToggles()
         observeSalahLog()
+        observeWidgetPromo()
         loadDailyAyah()
         startTicker()
         viewModelScope.launch { salahRepository.cleanupOldEntries() } // keep 30 days
@@ -215,6 +221,60 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val ayah = ayahRepository.getDailyAyah()
             _state.update { it.copy(dailyAyah = ayah) }
+        }
+    }
+
+    // ── widget promo card (PHASE-5.1) ─────────────────────────────────────
+
+    /** True when at least one Mawaqit widget is hosted on the home screen. */
+    private suspend fun isWidgetAdded(): Boolean = try {
+        GlanceAppWidgetManager(appContext)
+            .getGlanceIds(MawaqitWidget::class.java)
+            .isNotEmpty()
+    } catch (e: Exception) {
+        false // launcher quirk → treat as not added; showing the promo is harmless
+    }
+
+    /**
+     * Re-evaluates on every prefs change (cheap launcher query) AND right
+     * after location setup lands a prefs write — the two moments "promo
+     * should appear/hide" can change. Mid-session widget removal/addition is
+     * picked up on the next app open (fine for a promo card).
+     */
+    private fun observeWidgetPromo() {
+        viewModelScope.launch {
+            prefs.widgetPromoDismissed.collect { dismissed ->
+                val added = isWidgetAdded()
+                _state.update {
+                    it.copy(widgetAdded = added, showWidgetPromo = !dismissed && !added)
+                }
+            }
+        }
+    }
+
+    /**
+     * System "Add widget?" dialog (requestPinAppWidget). The dialog is async,
+     * so the outcome is verified with a short delayed re-check of hosted
+     * widgets: added → promo hidden + marked dismissed; denied/slow user →
+     * promo simply stays (no permanent punishment for "No").
+     */
+    fun addWidget() {
+        viewModelScope.launch {
+            WidgetPromo.pinWidget(appContext)
+            delay(3_000) // usual time to answer the system dialog
+            val added = isWidgetAdded()
+            if (added) {
+                prefs.setWidgetPromoDismissed(true)
+                _state.update { it.copy(widgetAdded = true, showWidgetPromo = false) }
+            }
+        }
+    }
+
+    /** "Not now" — permanent for this install (reinstalls restore prefs anyway). */
+    fun dismissWidgetPromo() {
+        viewModelScope.launch {
+            prefs.setWidgetPromoDismissed(true)
+            _state.update { it.copy(showWidgetPromo = false) }
         }
     }
 

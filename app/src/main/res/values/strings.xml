@@ -38,6 +38,12 @@
     <string name="widget_no_data">Open Mawaqit to load prayer times</string>
     <string name="widget_in">in %1$s</string>
 
+    <!-- Widget promo card (PHASE-5.1) -->
+    <string name="widget_promo_title">Add the Mawaqit widget?</string>
+    <string name="widget_promo_body">See the next prayer and countdown right on your home screen — no need to open the app.</string>
+    <string name="widget_promo_add">Add Widget</string>
+    <string name="widget_promo_dismiss">Not now</string>
+
     <!-- Navigation -->
     <string name="tab_home">Home</string>
     <string name="tab_quran">Quran</string>
