@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-19 — [PHASE-4] CODE COMPLETE (commit 5303560): real home screen (hero card, salah checkmarks, daily ayah, bottom nav); temp test UI removed. Codespaces build + phone test pending.**
+> **Last updated: 2026-09-19 — [PHASE-4] build OK + phone test: 6/8 pass; 2 bugs found & FIXED (commit pending): hero countdown froze at 00:00:00 after prayer passed (ticker now recomputes next prayer in real time), gold "current prayer" stuck on Fajr all day (now advances with the day). Mosque notification icon = by design, not a bug. Rebuild + re-test pending.**
 
 ---
 
@@ -96,7 +96,7 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
 | 1 | Skeleton: Gradle, manifest, resources, theme, Hilt app, MainActivity | ✅ COMPLETE — 5/5 phone checks passed 2026-09-17 |
 | 2 | Prayer times (AlAdhan API + Room + repository) | ✅ COMPLETE — 5/5 phone checks passed 2026-09-17 |
 | 3 | Alarms (AlarmReceiver, BootReceiver, AzanService) | ✅ PASSED — phone test 6/6 on 2026-09-18 (silent stubs; 5-min dismiss verified in code) |
-| 4 | Home screen UI | 🚧 CODE COMPLETE 2026-09-19 (commit 5303560) — needs build + phone test |
+| 4 | Home screen UI | 🚧 code OK + tested 6/8; 2 UI-tick bugs FIXED (real-time next-prayer rollover + current-prayer advance) — needs rebuild + re-test |
 | 5 | Widget (Glance; lock-screen = opportunistic bonus) | not started |
 | 6 | Quran (UmmahAPI — endpoints re-verified live in Sept 2026) | not started |
 | 7 | Qibla | not started |
@@ -203,6 +203,18 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
   Temp Phase 2/3 test UI REMOVED (re-arm/test buttons, big switches); notif
   permission request KEPT. AlarmRefreshManager.fireTestAlarm kept deliberately
   for the Phase 8 Alarm Health card. **Next: user Codespaces build → phone test → Phase 5.**
+- **2026-09-19 — Session 7:** Phase 4 build OK; user phone test 6/8 (hero, rows,
+  persistent checkmarks, nav tabs, offline cache all pass). 2 REAL BUGS found
+  + fixed: (1) hero countdown froze at 00:00:00 once the shown next prayer's
+  time passed — ticker only updated the clock; now the 1s ticker recomputes
+  nextPrayer via repository.getNextPrayer the moment its timeMillis passes
+  (real-time rollover to Dhuhr→Asr→…, no app restart needed); (2) gold
+  "current prayer" highlight stuck on Fajr all day — getCurrentPrayerStatus
+  flagged the FIRST passed prayer; now marks the MOST RECENT passed prayer as
+  CURRENT (Fajr stays gold until Dhuhr's time begins — period semantics).
+  NOT a bug: white mosque-with-minarets icon in the notification shade =
+  ic_azan (Android forces white silhouette notif icons); ⏰ = separate system
+  exact-alarm indicator. Rebuild + focused re-test pending.
 
 ## PHASE-2 IMPLEMENTATION NOTES (for future debugging)
 - New files: data/model/PrayerTimings.kt, data/api/Aladhan{Models,ApiService}.kt,
