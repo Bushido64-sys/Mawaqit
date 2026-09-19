@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-19 — [PHASE-5.2] CODE COMPLETE (commit d875a77): REAL-grid anchors (5.1's 270dp anchor never fit a real 3x2 → compact fallback → fonts never grew; now 130/195 x 60/170) + 4th tall layout (2x2) + "way bigger" font ladder (name 16/20/24/28sp) + promo moved to a 5s-timed ModalBottomSheet popup. Build + re-test pending.**
+> **Last updated: 2026-09-19 — [PHASE-5.2] CODE COMPLETE (commit d875a77): REAL-grid anchors (5.1's 270dp anchor never fit a real 3x2 → compact fallback → fonts never grew; now 130/195 x 60/170) + 4th tall layout (2x2) + "way bigger" font ladder (name 16/20/24/28sp) + promo moved to a 5s-timed ModalBottomSheet popup. ⚠️ SESSION CLOSED BEFORE THIS BUILD WAS TESTED — next session MUST ask for the PHASE-5.2 test results FIRST (see NEXT SESSION section).**
 
 ---
 
@@ -14,10 +14,27 @@ Android prayer-times + alarm app (Kotlin, Compose, offline-first), built phase b
 from a detailed guidebook (`mawaqit-guidebook/`), with the user learning as we go.
 
 ## WHERE WE ARE RIGHT NOW
-**Phase 3 (alarms) — CODE COMPLETE, committed & pushed 2026-09-18.** Not yet built
-or phone-tested. User chose **silent stub audio** (3 tiny silent files in res/raw;
-real azan MP3s swap in later → one rebuild) and approved both TEMP test helpers
-(5 alarm switches + notification permission popup on the temp HomeScreen).
+**⚠️ SESSION CLOSED 2026-09-19 with [PHASE-5.2] BUILT BUT NEVER PHONE-TESTED.**
+The next session OPENS by asking the user for the PHASE-5.2 test results —
+no new work before that (user's Rule 1).
+
+**Where the app stands:** Phases 0–4 ✅ done and user-passed (alarms are
+7-day fire-and-forget, bulletproofed, verified on device). Phase 5 widget:
+core (dcca709) user-tested — picker, render, data all confirmed visually;
+tap-opens-app / reboot survival / lock-screen bonus were never explicitly
+reported (confirm next session, cheap). [PHASE-5.1] (9e25dba) user-tested →
+two feedback items: fonts didn't grow when resized (root cause found: 5.1
+anchors wider than real grid slots → system always fell back to compact)
+and promo card wanted as a timed popup instead. [PHASE-5.2] (d875a77)
+fixes both: real-grid anchors (130/195 x 60/170), NEW tall 2x2 layout, font
+ladder name 16/20/24/28sp · time 13/16/18/22sp · countdown 10/11/13/15sp ·
+ayah 11/13/15sp (hidden at 2x1, 1 line 3x1, 2 lines 2x2, 3 lines 3x2+),
+promo → ModalBottomSheet after 5s (once per app open). **AWAITING: user
+rebuild + test results → then Phase 6 (Quran) on explicit OK.**
+Real azan MP3s still pending (assignment/05); splash video pending
+(assignment/06, needed only by Phase 9).
+
+(PHASE-3-era detail below kept for history.)
 
 What was built (14 files + stubs, commits 643fd7f + 0f7e1d0):
 - alarm/: AlarmScheduler (setAlarmClock + inexact fallback), AlarmReceiver (wakelock
@@ -150,18 +167,22 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
 
 ## NEXT SESSION: DO THIS IN ORDER
 1. **Read this file top to bottom.** (You just did — good.)
-2. Ask user for the build result: `codespaces/build.sh` output (APK name or the
-   "What went wrong" box) or the exact phone behavior. One fix at a time,
-   commit `[PHASE-3]`, push, user rebuilds.
-3. Build is green → APK on phone → run the PHASE_4_HOME_SCREEN.md "PHASE 4
-   COMPLETE WHEN" checks: layout matches DESIGN.md, countdown ticks every second,
-   tapping a prayer marks it (green check persists across app restart), daily
-   ayah shows Arabic + translation, bottom nav switches all 4 tabs, offline
-   banner when no internet, alarm toggles persist. REGRESSION: alarms still fire
-   at prayer time (silent) — note the Test-azan button is GONE now (temp UI),
-   so use real prayer times or the clock trick.
-4. Phase 4 passes → user gives explicit OK → PHASE_5 (Glance widget) next.
-   Glance deps already in build.gradle.kts; read PHASE_5_WIDGET.md first.
+2. **FIRST: ask the user for the [PHASE-5.2] test results** — commit d875a77
+   was NEVER tested (session closed). Ask for: (a) Codespaces `build.sh`
+   output; (b) widget resized 2x1 → 3x1 → 2x2 → 3x2: fonts must JUMP bigger
+   each step (name 16/20/24/28sp; hero = big + city + 3-line ayah); (c) promo
+   popup slides up ~5s after app open, once, with Add-Widget → system pin
+   dialog and permanent "Not now". Also cheap-confirm from the earlier round:
+   tap-widget-opens-app + reboot survival (never explicitly reported) and the
+   optional lock-screen bonus check (either outcome passes).
+3. Any failure → one fix at a time, commit `[PHASE-5.x]`, push, user rebuilds.
+4. All pass → user gives explicit OK → **PHASE_6 (Quran)**: read
+   PHASE_6_QURAN.md + API_REFERENCE.md (UmmahAPI endpoints re-verified live
+   Sept 2026) + DATA_SCHEMA.md FIRST; patch docs before code (our ritual).
+   Widget Glance gotchas learned this phase (for any future widget work):
+   explicit-Intent actionStartActivity only, LocalSize lives in
+   androidx.glance, defaultWeight() is a scope member not an import, and
+   responsive anchors MUST match real launcher cell sizes (~70dp/cell).
 5. **Before ending any session:** update this file (status line, phases table, pending items).
 
 ## SESSION LOG (one line per working session, newest last)
@@ -269,6 +290,16 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
   showPromoSheet flag + LaunchedEffect delay; eligibility unchanged).
   Guidebook PHASE-5.2 addendum added. **Next: build + re-test (fonts grow
   with size, popup appears at 5s) → Phase 6 (Quran).**
+- **2026-09-19 — Session 10 (CLOSE):** [PHASE-5.2] executed per user-approved
+  plan (d875a77 + save 902dbd6, both pushed): real-grid anchors, tall 2x2
+  layout, "way bigger" font ladder, promo → 5s ModalBottomSheet popup.
+  Self-caught pre-build: missing .background import + dead SurfaceDeep/width
+  imports in HomeScreen; verification pass green (braces, anchors, ladder,
+  sheet wiring, no leftovers). **BUILD WAS NOT TESTED — user closed the
+  session; NEXT SESSION MUST ASK FOR PHASE-5.2 TEST RESULTS FIRST** (resize
+  through 4 shapes + 5s popup + quick tap/reboot confirmations), then Phase 6
+  (Quran) on explicit OK. Save file's WHERE WE ARE + NEXT SESSION sections
+  rewritten for a clean handoff.
 
 ## PHASE-2 IMPLEMENTATION NOTES (for future debugging)
 - New files: data/model/PrayerTimings.kt, data/api/Aladhan{Models,ApiService}.kt,
