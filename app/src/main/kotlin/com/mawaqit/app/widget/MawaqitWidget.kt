@@ -1,6 +1,7 @@
 package com.mawaqit.app.widget
 
 import android.content.Context
+import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -76,6 +77,10 @@ class MawaqitWidget : GlanceAppWidget() {
         }.orEmpty()
         val noDataText = context.getString(R.string.widget_no_data)
         val ayahLine = "${ayah.reference} · ${ayah.arabic}"
+        // Pre-built outside composition (glance 1.1.0 has no reified
+        // actionStartActivity<T>() — the explicit Intent overload is the
+        // version-safe call; see build-fix 2026-09-19).
+        val openAppIntent = Intent(context, MainActivity::class.java)
 
         provideContent {
             MawaqitWidgetContent(
@@ -84,7 +89,8 @@ class MawaqitWidget : GlanceAppWidget() {
                 prayerName = prayerName,
                 countdownLine = countdownLine,
                 noDataText = noDataText,
-                ayahLine = ayahLine
+                ayahLine = ayahLine,
+                openAppIntent = openAppIntent
             )
         }
     }
@@ -97,7 +103,8 @@ private fun MawaqitWidgetContent(
     prayerName: String,
     countdownLine: String,
     noDataText: String,
-    ayahLine: String
+    ayahLine: String,
+    openAppIntent: Intent
 ) {
     val white = ColorProvider(Color.White)
     val whiteDim = ColorProvider(Color.White.copy(alpha = 0.7f))
@@ -108,7 +115,7 @@ private fun MawaqitWidgetContent(
             .fillMaxSize()
             .background(ColorProvider(SurfaceDeep))
             .cornerRadius(16.dp)
-            .clickable(actionStartActivity<MainActivity>())
+            .clickable(actionStartActivity(openAppIntent))
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
