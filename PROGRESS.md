@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-19 — [PHASE-5] CODE COMPLETE (commit dcca709): 2x1 Glance widget (next prayer + gold countdown + ayah line, tap opens app), triple refresh nets (15-min heartbeat + prayer-pass one-shot + system 30-min cycle). Guidebook PHASE_5_WIDGET.md patched pre-code (missing receiver/XML wiring, dead DESIGN §6 ref, redundant DataStore round-trip). Build + phone test pending.**
+> **Last updated: 2026-09-19 — [PHASE-5] widget BUILT + user-tested (visuals pass; build fix c515dda: explicit-Intent actionStartActivity). [PHASE-5.1] CODE COMPLETE (commit 9e25dba): SizeMode.Responsive 3 layouts (2x1/3x1/3x2+, fonts scale with size) + add-widget promo card (system requestPinAppWidget dialog). Build + re-test pending.**
 
 ---
 
@@ -97,7 +97,7 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
 | 2 | Prayer times (AlAdhan API + Room + repository) | ✅ COMPLETE — 5/5 phone checks passed 2026-09-17 |
 | 3 | Alarms (AlarmReceiver, BootReceiver, AzanService) | ✅ PASSED — phone test 6/6 on 2026-09-18 (silent stubs; 5-min dismiss verified in code) |
 | 4 | Home screen UI | ✅ PASSED 2026-09-19 — user confirmed live rollover, gold current-prayer highlight, azan notification. Bonus fix: one-frame setup flash on cold start (needsLocation tri-state) |
-| 5 | Widget (Glance; lock-screen = opportunistic bonus) | 🚧 CODE COMPLETE 2026-09-19 (commit dcca709) — needs build + phone test |
+| 5 | Widget (Glance; lock-screen = opportunistic bonus) | 🚧 built + user-tested; [PHASE-5.1] responsive layouts + promo card CODE COMPLETE (9e25dba) — needs build + re-test |
 | 6 | Quran (UmmahAPI — endpoints re-verified live in Sept 2026) | not started |
 | 7 | Qibla | not started |
 | 8 | Settings (DataStore, Urdu, per-app language) | not started |
@@ -246,6 +246,20 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
   DESIGN.md §6 cross-ref dead — widget spec doesn't exist, DataStore keys
   unnecessary). **Next: Codespaces build → phone test (picker/refresh/tap/
   reboot/lock-screen-bonus) → Phase 6 (Quran).**
+- **2026-09-19 — Session 9:** Build error from user log: glance 1.1.0 has NO
+  reified actionStartActivity<T>() → explicit Intent overload (c515dda; the
+  Intent is now pre-built in provideGlance). User phone test: widget visuals
+  PASS (picker, render, tap, reboot survival); feedback → [PHASE-5.1] built
+  same session (9e25dba): (1) SizeMode.Responsive, 3 anchors 180x60/270x60/
+  270x125 — compact 2x1 (no ayah), regular 3x1 (+ayah), large 3x2+ (26sp
+  name, 20sp time, city uppercase, 3-line ayah, pushed to bottom); verified
+  pattern against official build-ui docs before coding (LocalSize branching);
+  (2) promo card = Alerts-2 pattern, addWidget() → requestPinAppWidget
+  (canPin checked, API 26+), async-dialog outcome verified via delayed
+  getGlanceIds re-check (NOT dismissed on dialog open — "No" is never
+  punished), "Not now" → WIDGET_PROMO_DISMISSED pref, card auto-hides when
+  widgets hosted. Guidebook PHASE-5.1 addendum added. **Next: build + re-test
+  (resize behavior + promo card) → Phase 6 (Quran).**
 
 ## PHASE-2 IMPLEMENTATION NOTES (for future debugging)
 - New files: data/model/PrayerTimings.kt, data/api/Aladhan{Models,ApiService}.kt,
