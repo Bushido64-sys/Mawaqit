@@ -18,7 +18,12 @@ from a detailed guidebook (`mawaqit-guidebook/`), with the user learning as we g
 [PHASE-5.2] on device — "the widget looks better than before" — fonts +
 responsive layouts + 5s popup all verified.
 
-**NOW: [PHASE-6] built & pushed (0fdbb31) — AWAITING USER BUILD + TEST.**
+**NOW: [PHASE-6] code pushed; APK builds come from the GitHub Actions auto-build
+(not Codespaces). Two CI errors fixed: 2085a1b (block-body returns) and db588e8
+(Retrofit @Qualifiers) — 3rd build was in flight at save time. AWAITING: green
+build → user downloads artifact → the 9-check list below. NOTE: build #2 passed
+Kotlin compilation of ALL Phase-6 code (failure moved to the Hilt wiring stage),
+so the 16-file batch is compiler-clean; only the DI graph was wrong.**
 Open the next session by asking for these results BEFORE any new work:
 | # | Test | Expect |
 |---|------|--------|
@@ -157,9 +162,26 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
 3. **Flag problems immediately.** If something's off, say it right away.
 4. **Create `assignment/` files ONLY when the user asks** ("build assignment when I say so").
 5. Docs in the guidebook get patched BEFORE code when issues are found.
+6. **EXPLICIT "BUILD" PERMISSION GATE (2026-09-20, user demand — NON-NEGOTIABLE):**
+   never write new features/fixes/code without the user's explicit go — present the
+   plan FIRST, wait for "BUILD"/"go" or an explicit ask (e.g. "check and fix the red
+   build" counts for that build only). Standing exceptions: fixing RED Actions builds
+   when the user asks, and updating PROGRESS.md/docs. Changes stay surgical: every
+   commit touches ONLY the files the fix requires; show `git diff --stat` as proof
+   when core/shared files are involved. The user's trust was shaken once by fearing
+   main files were touched — always state exactly what was touched, with evidence.
 
 ## KEY DECISIONS (the "why" behind the code)
-- **Builds: GitHub Actions AUTO-BUILD on every push to main (PRIMARY since 2026-09-20); Codespaces = manual fallback only.** User's Codespace became unstable (wouldn't reload), so push-triggers were re-enabled on the existing debugged workflow — it never used the broken `android-actions/setup-android` action; it talks to sdkmanager directly (that was the fix for the Sept-2026 repo-wide breakage). `paths-ignore` (**.md, codespaces/**) + concurrency-cancel protect free-tier minutes (private repo = 2000 min/month, ~15–20 min/build). APK lives in the run's **Artifacts** (`mawaqit-debug-<run#>`, GitHub login required to download, 14-day retention). If Actions ever breaks again → Codespaces `codespaces/setup.sh` + `codespaces/build.sh`.
+- **Builds: GitHub Actions AUTO-BUILD on every push to main (PRIMARY since 2026-09-20); Codespaces = manual fallback only.** User's Codespace became unstable (wouldn't reload), so push-triggers were re-enabled on the existing debugged workflow — it never used the broken `android-actions/setup-android` action; it talks to sdkmanager directly (that was the fix for the Sept-2026 repo-wide breakage).   `paths-ignore` (**.md, codespaces/**) + concurrency-cancel protect free-tier minutes (private repo = 2000 min/month, ~15–20 min/build). APK lives in the run's **Artifacts** (`mawaqit-debug-<run#>`, GitHub login required to download, 14-day retention). If Actions ever breaks again → Codespaces `codespaces/setup.sh` + `codespaces/build.sh`.
+- **Reading Actions failures WITHOUT the user copy-pasting (since 2026-09-20):** query
+  `https://api.github.com/repos/Bushido64-sys/Mawaqit/commits/<sha>/check-runs` (public,
+  no auth — works via read_url; the `gh` CLI is unavailable in the sandbox) → get the
+  check-run id + conclusion → then `.../check-runs/<id>/annotations` for the real
+  `e:` compiler lines. This is the standard triage loop for every red build.
+- **Dagger gotcha (Phase 6, cost 1 build):** TWO Retrofit instances in NetworkModule
+  MUST carry distinct `@Qualifier` tags (`AladhanRetrofit`/`UmmahRetrofit`, defined in
+  NetworkModule.kt) — unqualified duplicate types = `DuplicateBindings` failure in the
+  Hilt graph. Any future 3rd API client needs its own qualifier + tagged service param.
 - **CI workflow is MANUAL-TRIGGER ONLY** (`workflow_dispatch`). Works via direct sdkmanager calls
   if ever re-enabled. Don't restore push-triggered builds.
 - **Every build is self-identifying:** `build.gradle.kts` reads `git rev-parse --short HEAD` and
@@ -328,6 +350,18 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
   as manual fallback (fix recipes: hard refresh / Rebuild Container / recreate).
   **Next: user downloads Actions APK → runs the 9-check PHASE-6 list → Phase 6
   verdict → Phase 7 (Qibla) on explicit OK.**
+- **2026-09-20 — Session 12:** Codespace became unusable → APK builds moved to
+  GitHub Actions auto-build on push (KEY DECISIONS updated; push 5356fe0 fired
+  build #1). Build #1 RED: expression-body `return`s in AyahRepository → fixed
+  (2085a1b, 1 file). Build #2 RED: Dagger `DuplicateBindings` — two Retrofit
+  instances from Phase 6 unqualified → fixed with @Qualifiers (db588e8, 1 file,
+  +15/−2). Build #2 passing Kotlin compile retroactively validates the entire
+  Phase-6 batch (failure had moved to the DI-graph stage). Errors read via the
+  public check-runs annotations API — user never had to paste a log. **USER RULE
+  ADDED (Rule 6): explicit "BUILD" permission gate — plan first, code only on
+  explicit go; surgical commits with diff-stat proof.** Save file polished.
+  **Next: build #3 verdict → green → user tests PHASE-6 9-check list → Phase 7
+  (Qibla) PLAN ONLY, no code until the user says BUILD.**
 
 ## PHASE-2 IMPLEMENTATION NOTES (for future debugging)
 - New files: data/model/PrayerTimings.kt, data/api/Aladhan{Models,ApiService}.kt,
