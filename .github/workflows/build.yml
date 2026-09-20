@@ -1,14 +1,27 @@
 name: Build Mawaqit APK
 
 # ── CURRENT STRATEGY (Sept 2026) ─────────────────────────────────────────────
-# Day-to-day APK builds happen in GitHub CODESPACES instead (see
-# codespaces/setup.sh + codespaces/build.sh, and assignment/07 for the walkthrough).
-# Why: the SDK-setup action broke for everyone when Google retired the 'tools'
-# package, and build logs on Actions are unreadable without repo-owner login.
-# This workflow is kept for MANUAL runs only (Actions tab → Build Mawaqit APK →
-# Run workflow) — it works now that the SDK steps talk to sdkmanager directly.
+# PRIMARY BUILDER (since 2026-09-20): this workflow itself. Every push to main
+# automatically builds a fresh APK on GitHub's own Linux machine (SDK already
+# present at $ANDROID_HOME); the finished APK lands in the run's "Artifacts"
+# section. Codespaces (setup.sh + build.sh) is now only the manual fallback.
+# History: push-triggers were disabled when android-actions/setup-android broke
+# repo-wide (Google retired the 'tools' package, Sept 2026) — but this workflow
+# never used that action; it talks to sdkmanager directly, so auto-builds are
+# safe to re-enable. paths-ignore keeps doc-only commits from burning minutes.
 on:
-  workflow_dispatch:    # manual trigger only — no auto-builds on push
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'codespaces/**'
+  workflow_dispatch:    # manual run also available (Actions tab → Run workflow)
+
+# One build at a time per branch; a newer push cancels the stale run
+# (protects the free-tier minutes pool on private repos).
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:

@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-19 — [PHASE-6] CODE COMPLETE (commit 0fdbb31, 16 files, +1129): Quran reader — UmmahAPI stack, 114-Surah list + search, reading screen (RTL Arabic/Urdu, mode toggle, Bismillah iff flag), live Ayah of the Day, VideoBackground w/ gradient fallback. ⚠️ NOT YET BUILT/TESTED BY USER — next session MUST ask for the PHASE-6 build + test results FIRST (checklist below).**
+> **Last updated: 2026-09-20 — [PHASE-6] CODE COMPLETE (0fdbb31, 16 files, +1129) and STILL NOT BUILT/TESTED BY USER. User's Codespace broke → APK builds moved to GitHub Actions AUTO-BUILD on every push to main (see KEY DECISIONS). Next session MUST ask for the PHASE-6 build + test results FIRST (checklist below).**
 
 ---
 
@@ -142,8 +142,8 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
 | 2 | Prayer times (AlAdhan API + Room + repository) | ✅ COMPLETE — 5/5 phone checks passed 2026-09-17 |
 | 3 | Alarms (AlarmReceiver, BootReceiver, AzanService) | ✅ PASSED — phone test 6/6 on 2026-09-18 (silent stubs; 5-min dismiss verified in code) |
 | 4 | Home screen UI | ✅ PASSED 2026-09-19 — user confirmed live rollover, gold current-prayer highlight, azan notification. Bonus fix: one-frame setup flash on cold start (needsLocation tri-state) |
-| 5 | Widget (Glance; lock-screen = opportunistic bonus) | 🚧 [PHASE-5.2] real-grid anchors + font ladder + timed promo popup CODE COMPLETE (d875a77) — needs build + re-test |
-| 6 | Quran (UmmahAPI — endpoints re-verified live in Sept 2026) | not started |
+| 5 | Widget (Glance; lock-screen = opportunistic bonus) | ✅ PASSED — [PHASE-5.2] verified on device 2026-09-19 ("looks better than before") |
+| 6 | Quran (UmmahAPI — endpoints re-verified live in Sept 2026) | 🚧 CODE COMPLETE (0fdbb31) — awaiting Actions-built APK + phone test |
 | 7 | Qibla | not started |
 | 8 | Settings (DataStore, Urdu, per-app language) | not started |
 | 9 | Polish (splash: ONE card per launch, ~5s, bundled ≤4MB video) | not started |
@@ -159,10 +159,7 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
 5. Docs in the guidebook get patched BEFORE code when issues are found.
 
 ## KEY DECISIONS (the "why" behind the code)
-- **Builds happen in GitHub CODESPACES, not GitHub Actions.** The `android-actions/setup-android`
-  action broke for everyone when Google retired the `tools` package (Sept 2026), and Actions logs
-  were unreadable without repo-owner login. Codespaces: proper SDK + visible errors.
-  → `codespaces/setup.sh` (once) + `codespaces/build.sh` (every build).
+- **Builds: GitHub Actions AUTO-BUILD on every push to main (PRIMARY since 2026-09-20); Codespaces = manual fallback only.** User's Codespace became unstable (wouldn't reload), so push-triggers were re-enabled on the existing debugged workflow — it never used the broken `android-actions/setup-android` action; it talks to sdkmanager directly (that was the fix for the Sept-2026 repo-wide breakage). `paths-ignore` (**.md, codespaces/**) + concurrency-cancel protect free-tier minutes (private repo = 2000 min/month, ~15–20 min/build). APK lives in the run's **Artifacts** (`mawaqit-debug-<run#>`, GitHub login required to download, 14-day retention). If Actions ever breaks again → Codespaces `codespaces/setup.sh` + `codespaces/build.sh`.
 - **CI workflow is MANUAL-TRIGGER ONLY** (`workflow_dispatch`). Works via direct sdkmanager calls
   if ever re-enabled. Don't restore push-triggered builds.
 - **Every build is self-identifying:** `build.gradle.kts` reads `git rev-parse --short HEAD` and
@@ -195,22 +192,17 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
 
 ## NEXT SESSION: DO THIS IN ORDER
 1. **Read this file top to bottom.** (You just did — good.)
-2. **FIRST: ask the user for the [PHASE-5.2] test results** — commit d875a77
-   was NEVER tested (session closed). Ask for: (a) Codespaces `build.sh`
-   output; (b) widget resized 2x1 → 3x1 → 2x2 → 3x2: fonts must JUMP bigger
-   each step (name 16/20/24/28sp; hero = big + city + 3-line ayah); (c) promo
-   popup slides up ~5s after app open, once, with Add-Widget → system pin
-   dialog and permanent "Not now". Also cheap-confirm from the earlier round:
-   tap-widget-opens-app + reboot survival (never explicitly reported) and the
-   optional lock-screen bonus check (either outcome passes).
-3. Any failure → one fix at a time, commit `[PHASE-5.x]`, push, user rebuilds.
-4. All pass → user gives explicit OK → **PHASE_6 (Quran)**: read
-   PHASE_6_QURAN.md + API_REFERENCE.md (UmmahAPI endpoints re-verified live
-   Sept 2026) + DATA_SCHEMA.md FIRST; patch docs before code (our ritual).
-   Widget Glance gotchas learned this phase (for any future widget work):
-   explicit-Intent actionStartActivity only, LocalSize lives in
-   androidx.glance, defaultWeight() is a scope member not an import, and
-   responsive anchors MUST match real launcher cell sizes (~70dp/cell).
+2. **FIRST: ask the user for the [PHASE-6] build + test results** — the Phase-6
+   code (0fdbb31) has never been built/tested by the user. The APK now comes
+   from the GitHub Actions auto-build (Actions tab → latest run → Artifacts →
+   mawaqit-debug-<run#>). Then run the 9-check list at the top of this file.
+3. Any failure → one fix at a time, commit `[PHASE-6.x]`, push (Actions
+   rebuilds automatically), user re-downloads the new APK.
+4. All pass → user gives explicit OK → **PHASE_7 (Qibla)**: read PHASE_7_QIBLA.md
+   FIRST; patch docs before code (our ritual). Widget Glance gotchas (for any
+   future widget work): explicit-Intent actionStartActivity only, LocalSize
+   lives in androidx.glance, defaultWeight() is a scope member not an import,
+   responsive anchors MUST match real launcher cells (~70dp/cell).
 5. **Before ending any session:** update this file (status line, phases table, pending items).
 
 ## SESSION LOG (one line per working session, newest last)
@@ -324,10 +316,18 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
   Self-caught pre-build: missing .background import + dead SurfaceDeep/width
   imports in HomeScreen; verification pass green (braces, anchors, ladder,
   sheet wiring, no leftovers). **BUILD WAS NOT TESTED — user closed the
-  session; NEXT SESSION MUST ASK FOR PHASE-5.2 TEST RESULTS FIRST** (resize
-  through 4 shapes + 5s popup + quick tap/reboot confirmations), then Phase 6
+  session; NEXT SESSION MUST ASK FOR PHASE-5.2 TEST RESULTS FIRST**  (resize through 4 shapes + 5s popup + quick tap/reboot confirmations), then Phase 6
   (Quran) on explicit OK. Save file's WHERE WE ARE + NEXT SESSION sections
   rewritten for a clean handoff.
+- **2026-09-20 — Session 11:** User's Codespace stopped reloading (no way to build).
+  Response: re-enabled push-triggered Actions builds on the existing debugged workflow
+  (+ paths-ignore & concurrency-cancel; see KEY DECISIONS). The push itself fired the
+  first auto-build of the PHASE-6 code — APK downloadable from the run's Artifacts.
+  Save-file housekeeping: Phase 5 marked ✅ in the phases table (was stale), Phase 6
+  marked code-complete, NEXT SESSION checklist promoted to PHASE-6. Codespaces kept
+  as manual fallback (fix recipes: hard refresh / Rebuild Container / recreate).
+  **Next: user downloads Actions APK → runs the 9-check PHASE-6 list → Phase 6
+  verdict → Phase 7 (Qibla) on explicit OK.**
 
 ## PHASE-2 IMPLEMENTATION NOTES (for future debugging)
 - New files: data/model/PrayerTimings.kt, data/api/Aladhan{Models,ApiService}.kt,
