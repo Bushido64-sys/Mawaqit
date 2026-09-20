@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-20 — [PHASE-6] BUILT GREEN + user-tested (works; reading-screen UI rejected → redesigned). [PHASE-6.1] mushaf reader shipped (4f585cb, 8 files, +496/−105) — AWAITING user test (checklist below) before Phase 7. APK builds: GitHub Actions auto-build on every push to main.**
+> **Last updated: 2026-09-21 — [PHASE-6.1] user-tested: improvement confirmed ("good job") but 3 refinements requested → [PHASE-6.2] "The Perfect Page" BUILT & PUSHED (4c31b58, 5 files, +503/−198) — AWAITING user test (checklist below). APK: GitHub Actions auto-build on every push.**
 
 ---
 
@@ -18,28 +18,29 @@ from a detailed guidebook (`mawaqit-guidebook/`), with the user learning as we g
 [PHASE-5.2] on device — "the widget looks better than before" — fonts +
 responsive layouts + 5s popup all verified.
 
-**NOW: Phase 6 built green and user-tested on device — verdict: everything works,
-but the reading screen design was rejected ("scroll + translation pills not
-cool, looks AI slop"). Response: [PHASE-6.1] "The Mushaf Card" (4f585cb).
-AWAITING user test of the new reader → then Phase 7 (plan-only until user
-says BUILD — Rule 6 + discipline rule below). Open the next session by asking
-for these results BEFORE any new work:
-Open the next session by asking for these results BEFORE any new work:
+**NOW: Phase 6.1 reader user-tested — design approved, 3 flaws reported: (1) pages
+don't fill the screen / inner scroll exists, (2) translation toggle shouldn't be
+on the page, (3) page dots overflow on long surahs → active dot falls off.
+Response: [PHASE-6.2] "The Perfect Page" (4c31b58). AWAITING user test → then
+Phase 7 (plan-only until user says BUILD — Rule 6). Open the next session by
+asking for these results BEFORE any new work:
 | # | Test | Expect |
 |---|------|--------|
-| 1 | Open any surah (e.g. 2) | ONE gold-bordered navy card — NOT an endless scroll; Arabic in real Amiri calligraphy |
-| 2 | Swipe horizontally | Next page-card slides in; footer "Verses X–Y" + gold page dots advance |
-| 3 | Toggle العربية / EN / اردو | Gold selector SLIDES; translations appear under each ayah |
-| 4 | Al-Fatihah (1) | NO Bismillah (it IS verse 1); other surahs show it centered in the card |
-| 5 | "Aa" chip (top right) | Bottom sheet: S/M/L/XL pills + live Bismillah preview that resizes on tap |
-| 6 | Pick XL → close app → reopen | Font size remembered (persisted pref) |
-| 7 | First-ever reader open | "Swipe to turn the page" hint; vanishes on first swipe; never returns |
-| 8 | Airplane mode → reopen surah 2 | Loads instantly from cache (offline-first intact) |
+| 1 | Open any surah (e.g. 2) | Card is FILLED edge-to-edge with content sized to YOUR screen — ZERO scrolling inside the card (swiping is the only way) |
+| 2 | Swipe | Next page-card slides in, also full; no leftover empty half-pages |
+| 3 | Top bar | ☰ chip (top right); page itself has NO toggle, NO Aa chip |
+| 4 | Tap ☰ | "Reading Settings" sheet: translation toggle (sliding gold) + S/M/L/XL + live preview — BOTH controls in ONE sheet |
+| 5 | Pick XL → close → reopen | Size remembered AND pages now hold FEWER verses (re-fit proof) |
+| 6 | Al-Baqarah → swipe deep (page 20+) | Gold active dot ALWAYS visible (sliding 7-dot window) + footer "Page X of Y · Verses a–b" |
+| 7 | Al-Fatihah | NO Bismillah (unchanged regression) |
+| 8 | Airplane mode → reopen surah 2 | Loads instantly (offline-first intact) |
 | 9 | Regression: alarms/widget/home | Azan + widget + Ayah of the Day unaffected |
 Known safe caveats to tell the user: reading background is a GRADIENT by
 design until they deliver splash_video.mp4 (assignment/06) — then the video
 switches on by itself (VideoBackground probes by name, zero code change).
 First-ever surah open needs internet; every later open is offline.
+Safety valve: a single ayah taller than a whole page (Ayat al-Kursi at XL)
+gets its own internally-scrollable page — deliberate, not a bug.
 
 **PHASE-6 implementation facts (for future sessions):**
 - UmmahAPI 2nd Retrofit in NetworkModule (base https://ummahapi.com/api/).
@@ -64,6 +65,7 @@ First-ever surah open needs internet; every later open is offline.
 - QuranText.chunkIntoPages(): ~750 Arabic chars/page, never splits an ayah →
   HorizontalPager of gold-framed cards (28dp radius, 1dp gold border — the
   app's ONE ceremonial border; kit is otherwise borderless). Bismillah page 0 only.
+  (RETIRED in PHASE-6.2 — see below.)
 - SegmentedModeToggle: sliding gold indicator (BoxWithConstraints +
   animateDpAsState) replaces the 3 fat pills; labels العربية/EN/اردو hardcoded.
 - READER_FONT_SCALE (0.85/1.0/1.15/1.3) + READER_SWIPE_HINT_SEEN prefs added;
@@ -74,6 +76,27 @@ First-ever surah open needs internet; every later open is offline.
   The premium onboarding upgrade (5-page pre-settings flow with visual ayah
   preview cards + azan previews) is specced in PHASE_9_POLISH.md addendum —
   deferred until the splash video (assignment/06) lands.
+
+**PHASE-6.2 "Perfect Page" facts (4c31b58, 2026-09-21 — 5 files, +503/−198):**
+- FitPages.kt (NEW, ui/quran/): TextMeasurer-measured page packer. MushafPager
+  wraps a BoxWithConstraints and calls FitPages.fit() remember()-ed on
+  (ayahs, surah, mode, fontScale, bismillahPre, maxWidth, maxHeight) — pages
+  fit the REAL screen, re-fit on font/mode change. Whole ayahs only.
+- FitPages layout chrome constants (PAGE_PAD_H/V, CARD_PAD_H/V) are shared
+  with MushafPage — one source, no drift. Type-size constants MUST mirror
+  the renderers in SurahDetailScreen (they do; keep them in sync).
+- Oversized single ayah → FittedPage.allowScroll=true → that page scrolls
+  internally (safety valve, by design).
+- SurahDetailViewModel: UI state no longer carries `pages` (chunker retired);
+  screen fits pages itself. QuranText.chunkIntoPages DELETED.
+- TopBar: "Aa" chip replaced by ☰ (MoreVert) chip → ReaderSettingsSheet
+  (ModalBottomSheet, @OptIn) holds SegmentedModeToggle + font pills + preview.
+  SegmentedModeToggle is now sheet-resident (centered, 72% width).
+- WindowedPageDots: sliding window of max 7 dots, active centered & gold —
+  long surahs can't push the active dot off-screen (user-reported bug).
+  Footer: "Page X of Y · Verses a–b" (string reader_page_position).
+- New strings: reader_page_position, reader_translation, reader_settings,
+  content_desc_reader_settings. Untouched: DB, prefs, nav, home, widget, alarms.
 
 ## GLANCE GOTCHAS (Phase 5, all fixed & verified — do not repeat)
 1. actionStartActivity<Activity>() generic shorthand DOES NOT exist in Glance
