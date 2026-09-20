@@ -63,11 +63,15 @@
     <string name="mode_arabic_english">English</string>
     <string name="mode_arabic_urdu">Urdu</string>
 
-    <!-- Mushaf reader (PHASE-6.1) -->
+    <!-- Mushaf reader (PHASE-6.1, 6.2) -->
     <string name="reader_page_verses">Verses %1$d–%2$d</string>
+    <string name="reader_page_position">Page %1$d of %2$d · %3$s</string>
     <string name="reader_font_size">Text Size</string>
+    <string name="reader_translation">Translation</string>
+    <string name="reader_settings">Reading Settings</string>
     <string name="reader_swipe_hint">Swipe to turn the page</string>
     <string name="content_desc_font_size">Text size</string>
+    <string name="content_desc_reader_settings">Reading settings</string>
 
     <!-- Qibla -->
     <string name="qibla_direction">Qibla Direction</string>

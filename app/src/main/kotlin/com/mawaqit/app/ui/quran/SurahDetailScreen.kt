@@ -12,10 +12,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,6 +33,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,7 +54,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalTextMeasurer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -76,16 +80,18 @@ import com.mawaqit.app.util.QuranText
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 /**
- * PHASE-6.1 Surah reading screen — "The Mushaf Card".
+ * PHASE-6.2 Surah reading screen — "The Perfect Page".
  *
- * User-directed redesign of PHASE_6: the surah no longer scrolls end-to-end;
- * it is chunked into page-sized cards (QuranText.chunkIntoPages, never splits
- * an ayah) shown in a HorizontalPager — swipe = page turn. Each card:
- * deep-navy surface, 28dp radius, the app's ONE ceremonial gold border.
- * Header: Arabic name (gold) + English · meaning · verses-range footer.
- * Translation switch is a segmented pill in the card header (kit pattern);
- * font size lives behind the "Aa" chip (bottom sheet, persists to Phase 8).
- * Bismillah iff the API's bismillah_pre == true (API_REFERENCE.md 2.2).
+ * User-directed refinement of PHASE-6.1:
+ * 1. Pages are fit to the REAL screen via [FitPages] (TextMeasurer) — the
+ *    card never scrolls; swiping is the only navigation (safety valve: a
+ *    single ayah taller than a whole page, e.g. Ayat al-Kursi at XL).
+ * 2. The translation toggle moved OFF the page — the corner ☰ chip opens a
+ *    "Reading Settings" sheet with translation mode + text size together.
+ *    The page itself is pure text. Phase 8's Settings screen will surface
+ *    the same saved preferences.
+ * 3. Page dots are a sliding window of 7 centered on the active dot, plus an
+ *    explicit "Page X of Y · Verses a–b" line — infinite surahs can't lose you.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,7 +100,7 @@ fun SurahDetailScreen(
     viewModel: SurahDetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var showFontSheet by remember { mutableStateOf(false) }
+    var showSettingsSheet by remember { mutableStateOf(false) }
 
     VideoBackground(overlayAlpha = 0.7f) {
         Column(
@@ -105,7 +111,7 @@ fun SurahDetailScreen(
             TopBar(
                 title = state.surah?.nameEnglish.orEmpty(),
                 onBack = onBack,
-                onFontSize = { showFontSheet = true }
+                onSettings = { showSettingsSheet = true }
             )
 
             when {
@@ -114,35 +120,31 @@ fun SurahDetailScreen(
                     message = stringResource(R.string.error_content_unavailable),
                     onRetry = viewModel::load
                 )
-                else -> {
-                    SegmentedModeToggle(
-                        selected = state.displayMode,
-                        onSelect = viewModel::setMode
-                    )
-                    MushafPager(
-                        state = state,
-                        onFirstSwipe = viewModel::onFirstSwipe
-                    )
-                }
+                else -> MushafPager(
+                    state = state,
+                    onFirstSwipe = viewModel::onFirstSwipe
+                )
             }
         }
     }
 
-    if (showFontSheet) {
-        FontSizeSheet(
-            selected = state.fontScale,
-            onSelect = viewModel::setFontScale,
-            onDismiss = { showFontSheet = false }
+    if (showSettingsSheet) {
+        ReaderSettingsSheet(
+            selected = state.displayMode,
+            onSelectMode = viewModel::setMode,
+            fontScale = state.fontScale,
+            onSelectFont = viewModel::setFontScale,
+            onDismiss = { showSettingsSheet = false }
         )
     }
 }
 
-/** DESIGN.md §4 top bar: circular chip back arrow, centered title — plus "Aa". */
+/** DESIGN.md §4 top bar: circular back chip, centered title, circular ☰ chip. */
 @Composable
 private fun TopBar(
     title: String,
     onBack: () -> Unit,
-    onFontSize: () -> Unit
+    onSettings: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -170,154 +172,122 @@ private fun TopBar(
                 tint = Color.White
             )
         }
-        Box(
+        IconButton(
+            onClick = onSettings,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(Color.White.copy(alpha = 0.15f))
-                .clickable(onClick = onFontSize),
-            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "Aa",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+            Icon(
+                imageVector = Icons.Filled.MoreVert,
+                contentDescription = stringResource(R.string.content_desc_reader_settings),
+                tint = Color.White
             )
         }
     }
 }
 
-/**
- * PHASE-6.1 translation toggle — compact segmented pill with a sliding gold
- * selector (DESIGN.md §8 "sliding filled-pill selector"), replacing the
- * three fat pills the user rejected. Shows what renders BESIDES the Arabic.
- */
-@Composable
-private fun SegmentedModeToggle(
-    selected: DisplayMode,
-    onSelect: (DisplayMode) -> Unit
-) {
-    val options = listOf(
-        DisplayMode.ARABIC_ONLY to "العربية",
-        DisplayMode.ARABIC_ENGLISH to "EN",
-        DisplayMode.ARABIC_URDU to "اردو"
-    )
-    BoxWithConstraints(
-        modifier = Modifier
-            .padding(top = 4.dp, bottom = 8.dp)
-            .fillMaxWidth(0.72f)
-            .background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(50))
-            .padding(4.dp)
-    ) {
-        val segmentWidth = maxWidth / 3
-        val selectedIndex = options.indexOfFirst { it.first == selected }.coerceAtLeast(0)
-        val indicatorX by animateDpAsState(
-            targetValue = segmentWidth * selectedIndex,
-            animationSpec = tween(250),
-            label = "segmentIndicator"
-        )
-        Box(
-            modifier = Modifier
-                .offset(x = indicatorX)
-                .width(segmentWidth)
-                .height(32.dp)
-                .background(PrimaryGold, RoundedCornerShape(50))
-        )
-        Row(modifier = Modifier.height(32.dp)) {
-            options.forEach { (mode, label) ->
-                Box(
-                    modifier = Modifier
-                        .width(segmentWidth)
-                        .fillMaxHeight()
-                        .clickable { onSelect(mode) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = if (mode == selected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (mode == selected) Color(0xFF071E35) else Color.White,
-                        maxLines = 1
-                    )
-                }
-            }
-        }
-    }
-}
-
-/** Pager of mushaf cards + first-visit swipe hint. */
+/** Pager of fitted mushaf pages + first-visit swipe hint. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MushafPager(
     state: SurahDetailUiState,
     onFirstSwipe: () -> Unit
 ) {
-    val pages = state.pages
-    val pagerState = rememberPagerState(pageCount = { pages.size })
+    val bismillah = stringResource(R.string.bismillah)
+    val measurer = LocalTextMeasurer.current
+    val density = LocalDensity.current
 
-    // Any horizontal drag → the swipe hint retires forever (ViewModel guards).
-    LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.currentPageOffsetFraction }
-            .distinctUntilChanged()
-            .collect { fraction -> if (fraction != 0f) onFirstSwipe() }
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize()
-        ) { page ->
-            MushafPage(
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        // PHASE-6.2 fix #1 — measure-then-pack: pages fit THIS screen exactly,
+        // re-fitted whenever font size / translation mode / content changes.
+        val fittedPages = remember(
+            state.ayahs, state.surah, state.displayMode, state.fontScale,
+            state.bismillahPre, bismillah, measurer, density,
+            constraints.maxWidth, constraints.maxHeight
+        ) {
+            FitPages.fit(
+                ayahs = state.ayahs,
                 surah = state.surah,
-                pageAyahs = pages[page],
-                pageIndex = page,
-                pageCount = pages.size,
                 mode = state.displayMode,
                 fontScale = state.fontScale.multiplier,
-                showBismillah = page == 0 && state.bismillahPre
+                bismillahText = bismillah,
+                showBismillah = state.bismillahPre,
+                measurer = measurer,
+                density = density,
+                maxWidthPx = constraints.maxWidth,
+                maxHeightPx = constraints.maxHeight
             )
         }
+        val pagerState = rememberPagerState(pageCount = { fittedPages.size })
 
-        AnimatedVisibility(
-            visible = state.showSwipeHint,
-            enter = fadeIn() + slideInVertically { it / 2 },
-            exit = fadeOut(),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 48.dp)
-        ) {
-            Text(
-                text = "👇 ${stringResource(R.string.reader_swipe_hint)}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.9f),
+        // Any horizontal drag → the swipe hint retires forever (ViewModel guards).
+        LaunchedEffect(pagerState) {
+            snapshotFlow { pagerState.currentPageOffsetFraction }
+                .distinctUntilChanged()
+                .collect { fraction -> if (fraction != 0f) onFirstSwipe() }
+        }
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                val fitted = fittedPages.getOrNull(page) ?: return@HorizontalPager
+                MushafPage(
+                    surah = state.surah,
+                    page = fitted,
+                    pageIndex = page,
+                    pageCount = fittedPages.size,
+                    mode = state.displayMode,
+                    fontScale = state.fontScale.multiplier,
+                    showBismillah = page == 0 && state.bismillahPre
+                )
+            }
+
+            AnimatedVisibility(
+                visible = state.showSwipeHint,
+                enter = fadeIn() + slideInVertically { it / 2 },
+                exit = fadeOut(),
                 modifier = Modifier
-                    .background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(50))
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
-            )
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 48.dp)
+            ) {
+                Text(
+                    text = "👇 ${stringResource(R.string.reader_swipe_hint)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.9f),
+                    modifier = Modifier
+                        .background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(50))
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                )
+            }
         }
     }
 }
 
 /**
  * One mushaf card: gold-framed deep-navy block, header inside, ayahs
- * center-staged, verses-range + page dots footer.
+ * center-staged, footer with explicit page position + sliding-window dots.
+ * The ayah column scrolls ONLY when FitPages flagged the page oversized.
  */
 @Composable
 private fun MushafPage(
     surah: SurahEntity?,
-    pageAyahs: List<AyahEntity>,
+    page: FitPages.FittedPage,
     pageIndex: Int,
     pageCount: Int,
     mode: DisplayMode,
     fontScale: Float,
     showBismillah: Boolean
 ) {
+    val pageAyahs = page.ayahs
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = FitPages.PAGE_PAD_H, vertical = FitPages.PAGE_PAD_V)
     ) {
         Column(
             modifier = Modifier
@@ -326,7 +296,7 @@ private fun MushafPage(
                 .clip(RoundedCornerShape(28.dp))
                 .background(Color(0xFF071E35).copy(alpha = 0.55f))
                 .border(1.dp, PrimaryGold.copy(alpha = 0.75f), RoundedCornerShape(28.dp))
-                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .padding(horizontal = FitPages.CARD_PAD_H, vertical = FitPages.CARD_PAD_V)
         ) {
             // ── Header: Arabic name (gold) + English · meaning ──
             if (surah != null) {
@@ -368,7 +338,7 @@ private fun MushafPage(
                 Spacer(Modifier.height(12.dp))
             }
 
-            // ── Ayahs: centered when short, scrollable inside the card when tall ──
+            // ── Ayahs: center-staged; scroll only on the rare oversized page ──
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -376,9 +346,13 @@ private fun MushafPage(
                 contentAlignment = Alignment.Center
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
+                    modifier = if (page.allowScroll) {
+                        Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                    } else {
+                        Modifier.fillMaxWidth()
+                    }
                 ) {
                     pageAyahs.forEach { ayah ->
                         AyahBlock(ayah = ayah, mode = mode, fontScale = fontScale)
@@ -386,14 +360,22 @@ private fun MushafPage(
                 }
             }
 
-            // ── Footer: verses range + page dots ──
+            // ── Footer: "Page X of Y · Verses a–b" + sliding-window dots ──
             if (pageAyahs.isNotEmpty()) {
-                Text(
-                    text = stringResource(
+                val verses = if (pageCount > 1) {
+                    stringResource(
                         R.string.reader_page_verses,
                         pageAyahs.first().ayahNumber,
                         pageAyahs.last().ayahNumber
-                    ),
+                    )
+                } else ""
+                val pageLine = if (pageCount > 1) {
+                    stringResource(R.string.reader_page_position, pageIndex + 1, pageCount, verses)
+                } else {
+                    verses
+                }
+                Text(
+                    text = pageLine,
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.5f),
                     textAlign = TextAlign.Center,
@@ -404,24 +386,46 @@ private fun MushafPage(
             }
             if (pageCount > 1) {
                 Spacer(Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    repeat(pageCount) { index ->
-                        val active = index == pageIndex
-                        Box(
-                            modifier = Modifier
-                                .size(width = if (active) 18.dp else 6.dp, height = 6.dp)
-                                .clip(RoundedCornerShape(50))
-                                .background(
-                                    if (active) PrimaryGold else Color.White.copy(alpha = 0.35f)
-                                )
-                        )
-                    }
-                }
+                WindowedPageDots(
+                    pageCount = pageCount,
+                    pageIndex = pageIndex,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
+        }
+    }
+}
+
+/**
+ * PHASE-6.2 fix #3 — sliding window of max [WINDOW] dots, active dot centered,
+ * so page 41 of 41 still shows its gold dot (the old full-row overflow bug).
+ */
+private const val DOTS_WINDOW = 7
+
+@Composable
+private fun WindowedPageDots(
+    pageCount: Int,
+    pageIndex: Int,
+    modifier: Modifier = Modifier
+) {
+    val window = DOTS_WINDOW.coerceAtMost(pageCount)
+    val start = (pageIndex - window / 2).coerceIn(0, (pageCount - window).coerceAtLeast(0))
+    val active = pageIndex - start
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        repeat(window) { index ->
+            val isActive = index == active
+            Box(
+                modifier = Modifier
+                    .size(width = if (isActive) 18.dp else 6.dp, height = 6.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(
+                        if (isActive) PrimaryGold else Color.White.copy(alpha = 0.35f)
+                    )
+            )
         }
     }
 }
@@ -496,12 +500,18 @@ private fun RtlText(
     }
 }
 
-/** "Aa" bottom sheet — S/M/L/XL with live Bismillah preview (Alerts-2 pattern). */
+/**
+ * PHASE-6.2 — "Reading Settings" sheet behind the ☰ chip: translation mode
+ * (sliding gold selector) + text size (S/M/L/XL) live together. The page
+ * itself stays pure text; Phase 8's Settings screen will read the same prefs.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FontSizeSheet(
-    selected: ReaderFontScale,
-    onSelect: (ReaderFontScale) -> Unit,
+private fun ReaderSettingsSheet(
+    selected: DisplayMode,
+    onSelectMode: (DisplayMode) -> Unit,
+    fontScale: ReaderFontScale,
+    onSelectFont: (ReaderFontScale) -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState()
@@ -515,6 +525,22 @@ private fun FontSizeSheet(
                 .fillMaxWidth()
                 .padding(start = 24.dp, end = 24.dp, bottom = 32.dp)
         ) {
+            // ── Translation mode ──
+            Text(
+                text = stringResource(R.string.reader_translation),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Spacer(Modifier.height(12.dp))
+            SegmentedModeToggle(
+                selected = selected,
+                onSelect = onSelectMode,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+            Spacer(Modifier.height(24.dp))
+
+            // ── Text size ──
             Text(
                 text = stringResource(R.string.reader_font_size),
                 style = MaterialTheme.typography.titleMedium,
@@ -527,7 +553,7 @@ private fun FontSizeSheet(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 ReaderFontScale.entries.forEach { option ->
-                    val isSelected = option == selected
+                    val isSelected = option == fontScale
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -541,7 +567,7 @@ private fun FontSizeSheet(
                                 else Color.White.copy(alpha = 0.2f),
                                 shape = RoundedCornerShape(50)
                             )
-                            .clickable { onSelect(option) }
+                            .clickable { onSelectFont(option) }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -558,11 +584,69 @@ private fun FontSizeSheet(
             // Live preview — resizes the moment a size is tapped.
             RtlText(
                 text = stringResource(R.string.bismillah),
-                fontSize = (20 * selected.multiplier).sp,
-                lineHeight = (34 * selected.multiplier).sp,
+                fontSize = (20 * fontScale.multiplier).sp,
+                lineHeight = (34 * fontScale.multiplier).sp,
                 color = Color.White,
                 textAlign = TextAlign.Center
             )
+        }
+    }
+}
+
+/**
+ * Translation toggle — compact segmented pill with a sliding gold selector
+ * (DESIGN.md §8). Lives in the Reading Settings sheet (PHASE-6.2), not on
+ * the page. Shows what renders BESIDES the always-on Arabic.
+ */
+@Composable
+private fun SegmentedModeToggle(
+    selected: DisplayMode,
+    onSelect: (DisplayMode) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val options = listOf(
+        DisplayMode.ARABIC_ONLY to "العربية",
+        DisplayMode.ARABIC_ENGLISH to "EN",
+        DisplayMode.ARABIC_URDU to "اردو"
+    )
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth(0.72f)
+            .background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(50))
+            .padding(4.dp)
+    ) {
+        val segmentWidth = maxWidth / 3
+        val selectedIndex = options.indexOfFirst { it.first == selected }.coerceAtLeast(0)
+        val indicatorX by animateDpAsState(
+            targetValue = segmentWidth * selectedIndex,
+            animationSpec = tween(250),
+            label = "segmentIndicator"
+        )
+        Box(
+            modifier = Modifier
+                .offset(x = indicatorX)
+                .width(segmentWidth)
+                .height(32.dp)
+                .background(PrimaryGold, RoundedCornerShape(50))
+        )
+        Row(modifier = Modifier.height(32.dp)) {
+            options.forEach { (mode, label) ->
+                Box(
+                    modifier = Modifier
+                        .width(segmentWidth)
+                        .fillMaxHeight()
+                        .clickable { onSelect(mode) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (mode == selected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (mode == selected) Color(0xFF071E35) else Color.White,
+                        maxLines = 1
+                    )
+                }
+            }
         }
     }
 }

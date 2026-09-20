@@ -7,7 +7,6 @@ import com.mawaqit.app.data.db.AyahEntity
 import com.mawaqit.app.data.db.SurahEntity
 import com.mawaqit.app.data.prefs.PrefsRepository
 import com.mawaqit.app.data.repository.QuranRepository
-import com.mawaqit.app.util.QuranText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,7 +42,6 @@ data class SurahDetailUiState(
     val displayMode: DisplayMode = DisplayMode.ARABIC_ENGLISH,
     val bismillahPre: Boolean = true,
     val fontScale: ReaderFontScale = ReaderFontScale.MEDIUM,
-    val pages: List<List<AyahEntity>> = emptyList(),
     val showSwipeHint: Boolean = false,
     val error: Boolean = false
 )
@@ -82,7 +80,6 @@ class SurahDetailViewModel @Inject constructor(
                     displayMode = _uiState.value.displayMode,
                     bismillahPre = detail.bismillahPre,
                     fontScale = _uiState.value.fontScale,
-                    pages = QuranText.chunkIntoPages(detail.ayahs),
                     showSwipeHint = !hintSeen && detail.ayahs.isNotEmpty(),
                     error = false
                 )

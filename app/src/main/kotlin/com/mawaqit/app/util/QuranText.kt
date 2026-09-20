@@ -25,31 +25,7 @@ object QuranText {
         return "﴿$digits﴾"
     }
 
-    /**
-     * PHASE-6.1 mushaf paging: chunk a surah's ayahs into card-sized pages for
-     * the HorizontalPager. Never splits an ayah; a page holds roughly
-     * [targetChars] Arabic characters (~1/3 of a phone screen at reader size)
-     * so long surahs become a handful of swipeable cards.
-     */
-    fun chunkIntoPages(
-        ayahs: List<AyahEntity>,
-        targetChars: Int = 750
-    ): List<List<AyahEntity>> {
-        if (ayahs.isEmpty()) return emptyList()
-        val pages = mutableListOf<List<AyahEntity>>()
-        var current = mutableListOf<AyahEntity>()
-        var charCount = 0
-        for (ayah in ayahs) {
-            val len = ayah.arabicText.length
-            if (current.isNotEmpty() && charCount + len > targetChars) {
-                pages.add(current)
-                current = mutableListOf()
-                charCount = 0
-            }
-            current.add(ayah)
-            charCount += len
-        }
-        if (current.isNotEmpty()) pages.add(current)
-        return pages
-    }
+    // PHASE-6.2: the old ~750-char guessing chunker is retired — page packing
+    // now happens on-screen via FitPages (ui/quran/FitPages.kt), which measures
+    // real rendered text so pages exactly fill the visible card.
 }
