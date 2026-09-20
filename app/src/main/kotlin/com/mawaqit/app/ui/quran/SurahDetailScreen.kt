@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -247,6 +248,7 @@ private fun SegmentedModeToggle(
 }
 
 /** Pager of mushaf cards + first-visit swipe hint. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MushafPager(
     state: SurahDetailUiState,
@@ -495,6 +497,7 @@ private fun RtlText(
 }
 
 /** "Aa" bottom sheet — S/M/L/XL with live Bismillah preview (Alerts-2 pattern). */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FontSizeSheet(
     selected: ReaderFontScale,
