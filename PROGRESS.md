@@ -97,6 +97,17 @@ gets its own internally-scrollable page — deliberate, not a bug.
   Footer: "Page X of Y · Verses a–b" (string reader_page_position).
 - New strings: reader_page_position, reader_translation, reader_settings,
   content_desc_reader_settings. Untouched: DB, prefs, nav, home, widget, alarms.
+- **Build fix (ad48e7d):** first 6.2 build failed — `LocalTextMeasurer` does
+  NOT exist in compose-bom 2024.06 (added later). Correct API for us:
+  `rememberTextMeasurer()` from `androidx.compose.ui.text` (function call,
+  NOT a CompositionLocal). General rule: our BOM is OLD — verify new API
+  names against 2024.06, prefer long-lived APIs.
+- **Sandbox network quirk (2026-09-21):** read_url/web_search to api.github.com
+  may fail with DNS ETIMEOUT while `curl` from run_terminal_command still
+  works (and git push over SSH always works). If read_url fails on GitHub
+  API, fall back to: `curl -s https://api.github.com/repos/Bushido64-sys/
+  Mawaqit/check-runs/<ID>/annotations` — get the check-run ID first from
+  `/commits/<SHA>/check-runs`.
 
 ## GLANCE GOTCHAS (Phase 5, all fixed & verified — do not repeat)
 1. actionStartActivity<Activity>() generic shorthand DOES NOT exist in Glance
