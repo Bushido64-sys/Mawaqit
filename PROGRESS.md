@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-20 — [PHASE-6] CODE COMPLETE (0fdbb31, 16 files, +1129) and STILL NOT BUILT/TESTED BY USER. User's Codespace broke → APK builds moved to GitHub Actions AUTO-BUILD on every push to main (see KEY DECISIONS). Next session MUST ask for the PHASE-6 build + test results FIRST (checklist below).**
+> **Last updated: 2026-09-20 — [PHASE-6] BUILT GREEN + user-tested (works; reading-screen UI rejected → redesigned). [PHASE-6.1] mushaf reader shipped (4f585cb, 8 files, +496/−105) — AWAITING user test (checklist below) before Phase 7. APK builds: GitHub Actions auto-build on every push to main.**
 
 ---
 
@@ -18,24 +18,24 @@ from a detailed guidebook (`mawaqit-guidebook/`), with the user learning as we g
 [PHASE-5.2] on device — "the widget looks better than before" — fonts +
 responsive layouts + 5s popup all verified.
 
-**NOW: [PHASE-6] code pushed; APK builds come from the GitHub Actions auto-build
-(not Codespaces). Two CI errors fixed: 2085a1b (block-body returns) and db588e8
-(Retrofit @Qualifiers) — 3rd build was in flight at save time. AWAITING: green
-build → user downloads artifact → the 9-check list below. NOTE: build #2 passed
-Kotlin compilation of ALL Phase-6 code (failure moved to the Hilt wiring stage),
-so the 16-file batch is compiler-clean; only the DI graph was wrong.**
+**NOW: Phase 6 built green and user-tested on device — verdict: everything works,
+but the reading screen design was rejected ("scroll + translation pills not
+cool, looks AI slop"). Response: [PHASE-6.1] "The Mushaf Card" (4f585cb).
+AWAITING user test of the new reader → then Phase 7 (plan-only until user
+says BUILD — Rule 6 + discipline rule below). Open the next session by asking
+for these results BEFORE any new work:
 Open the next session by asking for these results BEFORE any new work:
 | # | Test | Expect |
 |---|------|--------|
-| 1 | Quran tab | 114 rows: number chip, English+meaning, Arabic right |
-| 2 | Search "Al" / Arabic text | List filters live |
-| 3 | Open Al-Fatihah (1) | NO Bismillah header (it IS verse 1) |
-| 4 | Open any other surah, e.g. 2/12 | Bismillah header shows; Arabic RTL + ﴿١﴾ markers |
-| 5 | Mode toggle | Arabic-only / +English / +Urdu all render |
-| 6 | Reading screen | Blue gradient bg (video pending), no bottom pill, back arrow works |
-| 7 | Airplane mode → reopen surah 2 | Loads instantly from cache (offline-first) |
-| 8 | Home Ayah card | Still works; now rotates from LIVE random verses online |
-| 9 | Regression: alarms/widget | Azan + widget unaffected |
+| 1 | Open any surah (e.g. 2) | ONE gold-bordered navy card — NOT an endless scroll; Arabic in real Amiri calligraphy |
+| 2 | Swipe horizontally | Next page-card slides in; footer "Verses X–Y" + gold page dots advance |
+| 3 | Toggle العربية / EN / اردو | Gold selector SLIDES; translations appear under each ayah |
+| 4 | Al-Fatihah (1) | NO Bismillah (it IS verse 1); other surahs show it centered in the card |
+| 5 | "Aa" chip (top right) | Bottom sheet: S/M/L/XL pills + live Bismillah preview that resizes on tap |
+| 6 | Pick XL → close app → reopen | Font size remembered (persisted pref) |
+| 7 | First-ever reader open | "Swipe to turn the page" hint; vanishes on first swipe; never returns |
+| 8 | Airplane mode → reopen surah 2 | Loads instantly from cache (offline-first intact) |
+| 9 | Regression: alarms/widget/home | Azan + widget + Ayah of the Day unaffected |
 Known safe caveats to tell the user: reading background is a GRADIENT by
 design until they deliver splash_video.mp4 (assignment/06) — then the video
 switches on by itself (VideoBackground probes by name, zero code change).
@@ -56,6 +56,24 @@ First-ever surah open needs internet; every later open is offline.
   currentRoute.startsWith("surah/") check (return@Scaffold in bottomBar).
 - Real azan MP3s landed earlier (res/raw/ has all 3); splash video still
   pending (assignment/06).
+
+**PHASE-6.1 mushaf reader facts (4f585cb, 2026-09-20):**
+- Amiri Regular/Bold TTFs BUNDLED in res/font (~845KB, magic bytes verified) —
+  Quran calligraphy works fully offline. NotoNaskhArabicFamily = Amiri first +
+  downloadable Noto Naskh fallback (Type.kt); AmiriFontFamily also exposed.
+- QuranText.chunkIntoPages(): ~750 Arabic chars/page, never splits an ayah →
+  HorizontalPager of gold-framed cards (28dp radius, 1dp gold border — the
+  app's ONE ceremonial border; kit is otherwise borderless). Bismillah page 0 only.
+- SegmentedModeToggle: sliding gold indicator (BoxWithConstraints +
+  animateDpAsState) replaces the 3 fat pills; labels العربية/EN/اردو hardcoded.
+- READER_FONT_SCALE (0.85/1.0/1.15/1.3) + READER_SWIPE_HINT_SEEN prefs added;
+  "Aa" chip opens FontSizeSheet (M3 experimental → screen is @OptIn). Phase 8
+  must surface font size in Settings (flagged in PHASE_9 addendum too).
+- **DISCIPLINE RULE (user, permanent):** extra ideas that are not in the current
+  phase's plan get WRITTEN INTO FUTURE-PHASE DOCS, never built opportunistically.
+  The premium onboarding upgrade (5-page pre-settings flow with visual ayah
+  preview cards + azan previews) is specced in PHASE_9_POLISH.md addendum —
+  deferred until the splash video (assignment/06) lands.
 
 ## GLANCE GOTCHAS (Phase 5, all fixed & verified — do not repeat)
 1. actionStartActivity<Activity>() generic shorthand DOES NOT exist in Glance
