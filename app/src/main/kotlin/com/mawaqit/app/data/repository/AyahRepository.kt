@@ -39,32 +39,34 @@ class AyahRepositoryImpl @Inject constructor(
         return ayah
     }
 
-    private suspend fun fetchRandomAyah(): DailyAyah? = try {
-        var surah = Random.nextInt(1, 115)
-        var meta = quranRepository.getSurahMetaOnce(surah)
-        var attempts = 0
-        while (attempts < 3 && (meta == null || meta.numberOfAyahs > 60)) {
-            surah = Random.nextInt(1, 115)
-            meta = quranRepository.getSurahMetaOnce(surah)
-            attempts++
+    private suspend fun fetchRandomAyah(): DailyAyah? {
+        return try {
+            var surah = Random.nextInt(1, 115)
+            var meta = quranRepository.getSurahMetaOnce(surah)
+            var attempts = 0
+            while (attempts < 3 && (meta == null || meta.numberOfAyahs > 60)) {
+                surah = Random.nextInt(1, 115)
+                meta = quranRepository.getSurahMetaOnce(surah)
+                attempts++
+            }
+            meta ?: return null
+
+            val response = api.getSurah(surah)
+            val verses = response.data?.verses
+            if (!response.success || verses.isNullOrEmpty()) return null
+
+            val verse = verses.random()
+            val arabic = verse.arabic ?: return null
+            val ref = "${meta.nameEnglish}, ${verse.verseKey ?: "${surah}:${verse.ayah}"}"
+            DailyAyah(
+                arabic = arabic,
+                english = verse.translations?.sahihInternational.orEmpty(),
+                urdu = verse.translations?.urdu.orEmpty(),
+                reference = ref
+            )
+        } catch (e: Exception) {
+            null // offline/API hiccup → cached or fallback path (Rule 8)
         }
-        meta ?: return null
-
-        val response = api.getSurah(surah)
-        val verses = response.data?.verses
-        if (!response.success || verses.isNullOrEmpty()) return null
-
-        val verse = verses.random()
-        val arabic = verse.arabic ?: return null
-        val ref = "${meta.nameEnglish}, ${verse.verseKey ?: "${surah}:${verse.ayah}"}"
-        DailyAyah(
-            arabic = arabic,
-            english = verse.translations?.sahihInternational.orEmpty(),
-            urdu = verse.translations?.urdu.orEmpty(),
-            reference = ref
-        )
-    } catch (e: Exception) {
-        null // offline/API hiccup → cached or fallback path (Rule 8)
     }
 
     private fun fallbackAyah(): DailyAyah {
