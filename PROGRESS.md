@@ -83,7 +83,10 @@ First-ever surah open needs internet; every later open is offline.
 4. SizeMode.Responsive: sizeMode property + branch on LocalSize.current;
    anchors must match REAL launcher cell math (~70dp cells; our final:
    130/195dp wide × 60/170dp tall) or the layout silently never gets picked.
-5. M3 ModalBottomSheet is experimental — @OptIn(ExperimentalMaterial3Api::class).
+5. Experimental APIs need @OptIn **on every function that uses them** — the
+   annotation does NOT reach into private composables. Burned twice: M3
+   ModalBottomSheet (Phase 5) AND HorizontalPager/rememberPagerState
+   (ExperimentalFoundationApi, Phase 6.1 — 7 CI errors, one cause).
 
 (PHASE-3-era detail below kept for history.)
 
