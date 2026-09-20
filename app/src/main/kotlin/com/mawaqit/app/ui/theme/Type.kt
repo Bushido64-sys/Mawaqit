@@ -2,6 +2,7 @@ package com.mawaqit.app.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.googlefonts.Font
 import androidx.compose.ui.text.googlefonts.GoogleFont
@@ -31,8 +32,24 @@ val InterFontFamily = androidx.compose.ui.text.font.FontFamily(
     Font(googleFont = interFont, fontProvider = fontProvider, weight = FontWeight.ExtraBold),
 )
 
-/** Arabic/Urdu text — Quran reader + Ayah card (PHASE_6, RULES.md Rule 13). */
+/**
+ * PHASE-6.1: Amiri — the classic Naskh Quran typeface — is BUNDLED in
+ * res/font so the reader renders true calligraphy even fully offline
+ * (Google-Downloadable-Fonts need internet on first use).
+ */
+val AmiriFontFamily = androidx.compose.ui.text.font.FontFamily(
+    Font(R.font.amiri_regular, FontWeight.Normal),
+    Font(R.font.amiri_bold, FontWeight.Bold),
+)
+
+/**
+ * Arabic/Urdu text — Quran reader + Ayah card (PHASE_6, RULES.md Rule 13).
+ * Resolution order: bundled Amiri first (always available, Quran-grade
+ * Naskh); Noto Naskh Arabic (downloadable) as fallback; system default last.
+ */
 val NotoNaskhArabicFamily = androidx.compose.ui.text.font.FontFamily(
+    Font(R.font.amiri_regular, FontWeight.Normal),
+    Font(R.font.amiri_bold, FontWeight.Bold),
     Font(googleFont = notoNaskhArabicFont, fontProvider = fontProvider, weight = FontWeight.Normal),
     Font(googleFont = notoNaskhArabicFont, fontProvider = fontProvider, weight = FontWeight.Bold),
 )

@@ -63,6 +63,12 @@
     <string name="mode_arabic_english">English</string>
     <string name="mode_arabic_urdu">Urdu</string>
 
+    <!-- Mushaf reader (PHASE-6.1) -->
+    <string name="reader_page_verses">Verses %1$d–%2$d</string>
+    <string name="reader_font_size">Text Size</string>
+    <string name="reader_swipe_hint">Swipe to turn the page</string>
+    <string name="content_desc_font_size">Text size</string>
+
     <!-- Qibla -->
     <string name="qibla_direction">Qibla Direction</string>
     <string name="towards_mecca">° towards Mecca</string>

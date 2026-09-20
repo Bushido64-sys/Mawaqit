@@ -67,6 +67,10 @@ object PrefKeys {
 
     // Quran (PHASE_6) — comma list of surah numbers where bismillah_pre == false
     const val SURAH_NO_BISMILLAH = "surah_no_bismillah" // String e.g. "1,9"
+
+    // Quran reader (PHASE-6.1) — mushaf card redesign
+    const val READER_FONT_SCALE = "reader_font_scale" // Float multiplier 0.8–1.5
+    const val READER_SWIPE_HINT_SEEN = "reader_swipe_hint_seen" // Boolean
 }
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "mawaqit_prefs")
@@ -228,5 +232,23 @@ class PrefsRepository @Inject constructor(
         store.edit {
             it[stringPreferencesKey(PrefKeys.SURAH_NO_BISMILLAH)] = numbers.sorted().joinToString(",")
         }
+    }
+
+    // ── Quran reader (PHASE-6.1) ──────────────────────────────────────────
+
+    /** Arabic text scale multiplier — S 0.85 · M 1.0 · L 1.15 · XL 1.3. */
+    val readerFontScale: Flow<Float> =
+        store.data.map { it[floatPreferencesKey(PrefKeys.READER_FONT_SCALE)] ?: 1.0f }
+
+    suspend fun setReaderFontScale(scale: Float) {
+        store.edit { it[floatPreferencesKey(PrefKeys.READER_FONT_SCALE)] = scale }
+    }
+
+    /** First-visit swipe hint — shown once, then forever quiet. */
+    val readerSwipeHintSeen: Flow<Boolean> =
+        store.data.map { it[booleanPreferencesKey(PrefKeys.READER_SWIPE_HINT_SEEN)] ?: false }
+
+    suspend fun setReaderSwipeHintSeen() {
+        store.edit { it[booleanPreferencesKey(PrefKeys.READER_SWIPE_HINT_SEEN)] = true }
     }
 }
