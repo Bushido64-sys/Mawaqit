@@ -8,10 +8,21 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import java.util.concurrent.TimeUnit
+import javax.inject.Qualifier
 import javax.inject.Singleton
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+
+/** Name-tag for the prayer-times (AlAdhan) Retrofit client. */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class AladhanRetrofit
+
+/** Name-tag for the Quran (UmmahAPI) Retrofit client. */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class UmmahRetrofit
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -28,6 +39,7 @@ object NetworkModule {
             .readTimeout(15, TimeUnit.SECONDS)
             .build()
 
+    @AladhanRetrofit
     @Provides
     @Singleton
     fun provideRetrofit(client: OkHttpClient): Retrofit =
@@ -39,9 +51,10 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideAladhanApiService(retrofit: Retrofit): AladhanApiService =
+    fun provideAladhanApiService(@AladhanRetrofit retrofit: Retrofit): AladhanApiService =
         retrofit.create(AladhanApiService::class.java)
 
+    @UmmahRetrofit
     @Provides
     @Singleton
     fun provideUmmahRetrofit(client: OkHttpClient): Retrofit =
@@ -53,7 +66,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideUmmahApiService(retrofit: Retrofit): UmmahApiService =
+    fun provideUmmahApiService(@UmmahRetrofit retrofit: Retrofit): UmmahApiService =
         retrofit.create(UmmahApiService::class.java)
 
     // ⚠️ Both Retrofit Builders inject the SAME OkHttpClient — fine, because the
