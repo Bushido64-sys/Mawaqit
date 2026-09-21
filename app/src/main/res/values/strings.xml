@@ -72,12 +72,16 @@
     <string name="content_desc_font_size">Text size</string>
     <string name="content_desc_reader_settings">Reading settings</string>
 
-    <!-- Coach marks (PHASE-6.4) -->
-    <string name="coach_swipe_title">Swipe to turn the page</string>
-    <string name="coach_swipe_body">Just swipe — no scrolling. The next page slides right in.</string>
-    <string name="coach_button_title">Save your progress</string>
-    <string name="coach_button_body">Finished a page? Tap ‘Mark as read’ and we’ll remember your place.</string>
+    <!-- Coach mark (PHASE-6.4, trimmed to one lesson in PHASE-6.5;
+         the swipe lesson returns in the PHASE-9 onboarding flow) -->
+    <string name="coach_button_title">One tap saves your place</string>
+    <string name="coach_button_body">Finished a page? Tap ‘Mark as read’ at the bottom — we’ll remember your spot, and every page you mark brings you closer to completing the whole Quran.</string>
     <string name="coach_got_it">Got it</string>
+
+    <!-- PHASE-6.5 locked-page popup (read-in-order gate) -->
+    <string name="lock_title">Page locked</string>
+    <string name="lock_page_order">Mark the previous page as read first — pages unlock in order.</string>
+    <string name="lock_surah_order">%1$s isn’t finished yet. The Quran is read in order — finish it, and this surah unlocks.</string>
 
     <!-- Mushaf reader progress (PHASE-6.3) -->
     <string name="reader_mark_as_read">Mark as read</string>

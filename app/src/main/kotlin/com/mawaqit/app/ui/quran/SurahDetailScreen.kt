@@ -1,17 +1,13 @@
 package com.mawaqit.app.ui.quran
 
 import android.widget.Toast
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -51,11 +48,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -81,7 +79,6 @@ import com.mawaqit.app.ui.theme.NotoNaskhArabicFamily
 import com.mawaqit.app.ui.theme.PrimaryBlue
 import com.mawaqit.app.ui.theme.PrimaryGold
 import com.mawaqit.app.util.QuranText
-import kotlinx.coroutines.flow.distinctUntilChanged
 
 /**
  * PHASE-6.2 Surah reading screen — "The Perfect Page".
@@ -95,12 +92,15 @@ import kotlinx.coroutines.flow.distinctUntilChanged
  * - Progress is written by EXACTLY one event: tapping "Mark as read".
  *   Swiping and opening record nothing — browsing can never move the
  *   Continue card.
- * - Button states: unread page → outlined "Mark as read"; tapped → solid
- *   gold "Read ✓" (tap again on a read page re-pins the resume point).
- * - The old text swipe hint is replaced by a two-step coach mark
- *   (DESIGN.md pop-up style): ① swipe lesson (non-blocking — the user can
- *   swipe straight through it) → ② "Mark as read" lesson. One prefs flag
- *   retires both forever.
+ *
+ * PHASE-6.5 "Locked Pages":
+ * - The Quran unlocks in order, starting at Al-Fatihah. A page's button is
+ *   live only when it is the next unread page of an unlocked surah; locked
+ *   pills render dimmed, and tapping one explains itself with a pop-up
+ *   (same DESIGN.md family: navy card, gold border, "Got it").
+ * - The old two-step coach is trimmed to ONE lesson ("One tap saves your
+ *   place"); the swipe lesson is filed for the PHASE-9 onboarding flow with
+ *   a custom animation to be supplied later.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,10 +131,10 @@ fun SurahDetailScreen(
                 )
                 else -> MushafPager(
                     state = state,
-                    onCoachAdvance = viewModel::onCoachAdvance,
                     onCoachDone = viewModel::onCoachDone,
                     onMarkClick = viewModel::markPage,
-                    onConsumeResume = viewModel::consumeResumeToast
+                    onConsumeResume = viewModel::consumeResumeToast,
+                    onConsumeLock = viewModel::consumeLockPopup
                 )
             }
         }
@@ -201,15 +201,15 @@ private fun TopBar(
     }
 }
 
-/** Pager of fitted mushaf pages + resume logic + PHASE-6.4 coach marks. */
+/** Pager of fitted mushaf pages + resume logic + PHASE-6.5 coach & lock popup. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MushafPager(
     state: SurahDetailUiState,
-    onCoachAdvance: () -> Unit,
     onCoachDone: () -> Unit,
     onMarkClick: (Int, Int) -> Unit,
-    onConsumeResume: () -> Unit
+    onConsumeResume: () -> Unit,
+    onConsumeLock: () -> Unit
 ) {
     val bismillah = stringResource(R.string.bismillah)
     val measurer = rememberTextMeasurer()
@@ -258,14 +258,6 @@ private fun MushafPager(
             onConsumeResume()
         }
 
-        // PHASE-6.4 coach step 1 — any real swipe advances the lesson. Nothing
-        // is recorded anymore (button-only progress); this only teaches.
-        LaunchedEffect(pagerState) {
-            snapshotFlow { pagerState.currentPageOffsetFraction }
-                .distinctUntilChanged()
-                .collect { fraction -> if (fraction != 0f) onCoachAdvance() }
-        }
-
         Box(modifier = Modifier.fillMaxSize()) {
             HorizontalPager(
                 state = pagerState,
@@ -281,16 +273,26 @@ private fun MushafPager(
                     fontScale = state.fontScale.multiplier,
                     showBismillah = page == 0 && state.bismillahPre,
                     furthestAyah = state.furthestAyah,
+                    nextUnlockAyah = state.nextUnlockAyah,
+                    blockerSurahName = state.blockerSurahName,
                     onMarkClick = onMarkClick
                 )
             }
 
-            // PHASE-6.4 — two-step coach mark replaces the old text hint.
-            state.coachStep?.let { step ->
-                CoachOverlay(
-                    step = step,
-                    onAdvance = onCoachAdvance,
-                    onDone = onCoachDone
+            // PHASE-6.5 — ONE coach lesson remains (swipe lesson filed for the
+            // PHASE-9 onboarding with a custom animation). Non-blocking: the
+            // reader beneath stays usable, so the user can press the real
+            // button straight through it.
+            if (state.coachVisible) {
+                CoachOverlay(onDone = onCoachDone)
+            }
+
+            // PHASE-6.5 — locked "Mark as read" tap: explain, don't punish.
+            state.lockReason?.let { reason ->
+                LockPopup(
+                    reason = reason,
+                    blockerName = state.blockerSurahName,
+                    onDismiss = onConsumeLock
                 )
             }
         }
@@ -298,29 +300,13 @@ private fun MushafPager(
 }
 
 /**
- * PHASE-6.4 coach mark (DESIGN.md pop-up style): deep-navy card, gold border,
- * dot pagination. The scrim does NOT intercept touches — the reader beneath
- * stays usable, so the user can literally swipe through lesson ① and press
- * the real button through lesson ②. "Got it" (or completing the action)
- * advances/retires the coach.
+ * PHASE-6.5 — the remaining coach ("One tap saves your place"), DESIGN.md
+ * pop-up style: deep-navy card, gold border, mini replica of the pill to
+ * look for. The scrim is visual-only (no pointerInput) — touches pass
+ * through, so the user can use the reader while it shows.
  */
 @Composable
-private fun CoachOverlay(
-    step: Int,
-    onAdvance: () -> Unit,
-    onDone: () -> Unit
-) {
-    val transition = rememberInfiniteTransition(label = "coachSwipe")
-    val arrowX by transition.animateFloat(
-        initialValue = -18f,
-        targetValue = 18f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(700, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "coachSwipeArrow"
-    )
-
+private fun CoachOverlay(onDone: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         // Visual-only scrim — no pointerInput, so touches pass through.
         Box(
@@ -338,75 +324,100 @@ private fun CoachOverlay(
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (step == 1) {
+            Text(
+                text = stringResource(R.string.coach_button_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryGold
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = stringResource(R.string.coach_button_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.85f),
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(14.dp))
+            // Mini replica of the exact pill to look for.
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(PrimaryGold.copy(alpha = 0.18f))
+                    .border(1.dp, PrimaryBlue, RoundedCornerShape(50))
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(Modifier.width(6.dp))
                 Text(
-                    text = stringResource(R.string.coach_swipe_title),
-                    style = MaterialTheme.typography.titleMedium,
+                    text = stringResource(R.string.reader_mark_as_read),
+                    style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
-                    color = PrimaryGold
+                    color = Color.White
                 )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = stringResource(R.string.coach_swipe_body),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.85f),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(14.dp))
-                // Animated finger: slides left→right, the actual gesture to make.
-                Text(
-                    text = "👇→",
-                    fontSize = 28.sp,
-                    modifier = Modifier.offset(x = arrowX.dp)
-                )
-                Spacer(Modifier.height(14.dp))
-                CoachGotIt(onClick = onAdvance)
-            } else {
-                Text(
-                    text = stringResource(R.string.coach_button_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = PrimaryGold
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = stringResource(R.string.coach_button_body),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.85f),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(14.dp))
-                // Mini replica of the exact pill to look for.
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(PrimaryGold.copy(alpha = 0.18f))
-                        .border(1.dp, PrimaryBlue, RoundedCornerShape(50))
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.MenuBook,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = stringResource(R.string.reader_mark_as_read),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
-                Spacer(Modifier.height(14.dp))
-                CoachGotIt(onClick = onDone)
             }
+            Spacer(Modifier.height(14.dp))
+            CoachGotIt(onClick = onDone)
         }
     }
 }
 
-/** Gold "Got it" pill — the coach's only interactive element. */
+/**
+ * PHASE-6.5 — the lock pop-up (same navy + gold family as the coach).
+ * Unlike the coach, this one IS modal: the scrim swallows taps so the
+ * message gets read; "Got it" returns the user to the page.
+ */
+@Composable
+private fun LockPopup(
+    reason: LockReason,
+    blockerName: String?,
+    onDismiss: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) { detectTapGestures { } }, // modal scrim: block taps
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 32.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color(0xFF0c2b45))
+                .border(1.dp, PrimaryGold.copy(alpha = 0.75f), RoundedCornerShape(20.dp))
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = stringResource(R.string.lock_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryGold
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = when (reason) {
+                    LockReason.PAGE_ORDER -> stringResource(R.string.lock_page_order)
+                    LockReason.SURAH_ORDER ->
+                        stringResource(R.string.lock_surah_order, blockerName.orEmpty())
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.85f),
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(14.dp))
+            CoachGotIt(onClick = onDismiss)
+        }
+    }
+}
+
+/** Gold "Got it" pill — the only interactive element on both pop-ups. */
 @Composable
 private fun CoachGotIt(onClick: () -> Unit) {
     Box(
@@ -442,6 +453,8 @@ private fun MushafPage(
     fontScale: Float,
     showBismillah: Boolean,
     furthestAyah: Int,
+    nextUnlockAyah: Int,
+    blockerSurahName: String?,
     onMarkClick: (Int, Int) -> Unit
 ) {
     val pageAyahs = page.ayahs
@@ -554,8 +567,15 @@ private fun MushafPage(
                 }
                 Spacer(Modifier.height(10.dp))
 
-                // PHASE-6.4 — the ONLY progress writer (fixed height; FitPages
-                // reserves exactly FitPages.MUSHAF_FOOTER_H for it).
+                // PHASE-6.4/6.5 — the ONLY progress writer (fixed height;
+                // FitPages reserves exactly FitPages.MUSHAF_FOOTER_H for it).
+                // Locked pages render dimmed but stay tappable: the tap opens
+                // the explanatory pop-up instead of marking.
+                val firstAyahOnPage = pageAyahs.first().ayahNumber
+                val lastAyahOnPage = pageAyahs.last().ayahNumber
+                val isRead = furthestAyah >= lastAyahOnPage
+                val isLocked = !isRead &&
+                    (blockerSurahName != null || firstAyahOnPage > nextUnlockAyah)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -563,13 +583,9 @@ private fun MushafPage(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     MarkAsReadButton(
-                        isRead = furthestAyah >= pageAyahs.last().ayahNumber,
-                        onClick = {
-                            onMarkClick(
-                                pageAyahs.first().ayahNumber,
-                                pageAyahs.last().ayahNumber
-                            )
-                        }
+                        isRead = isRead,
+                        isLocked = isLocked,
+                        onClick = { onMarkClick(firstAyahOnPage, lastAyahOnPage) }
                     )
                     Spacer(Modifier.weight(1f))
                     Text(
@@ -584,17 +600,21 @@ private fun MushafPage(
 }
 
 /**
- * PHASE-6.4 — the one button that counts. Unread page → gold-shaded pill
+ * PHASE-6.4/6.5 — the one button that counts. Unread page → gold-shaded pill
  * with a blue border, "Mark as read". Page read → solid gold, "Read ✓"
- * (tapping again simply re-pins the resume point to this page).
+ * (tapping again simply re-pins the resume point to this page). A locked
+ * page's pill is dimmed to 40% — the lock is visible before the tap, and
+ * the tap answers with the lock pop-up instead of recording progress.
  */
 @Composable
 private fun MarkAsReadButton(
     isRead: Boolean,
+    isLocked: Boolean,
     onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
+            .alpha(if (isLocked) 0.4f else 1f)
             .clip(RoundedCornerShape(50))
             .background(if (isRead) PrimaryGold else PrimaryGold.copy(alpha = 0.18f))
             .border(1.dp, PrimaryBlue, RoundedCornerShape(50))
@@ -728,6 +748,8 @@ private fun RtlText(
  * PHASE-6.2 — "Reading Settings" sheet behind the ☰ chip: translation mode
  * (sliding gold selector) + text size (S/M/L/XL) live together. The page
  * itself stays pure text; Phase 8's Settings screen will read the same prefs.
+ * PHASE-6.5: content is lifted above the system nav bar so the font preview
+ * is never overlaid by the gesture/navigation buttons.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -747,6 +769,7 @@ private fun ReaderSettingsSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .padding(start = 24.dp, end = 24.dp, bottom = 32.dp)
         ) {
             // ── Translation mode ──

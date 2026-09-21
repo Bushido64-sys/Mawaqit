@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * PHASE-6.1 translation toggle — segmented pill in the card header.
+ * PHASE-6.1 translation toggle — segmented pill in the Reading Settings sheet.
  * The selected entry shows BESIDES the always-on Arabic.
  */
 enum class DisplayMode { ARABIC_ONLY, ARABIC_ENGLISH, ARABIC_URDU }
@@ -36,6 +36,9 @@ enum class ReaderFontScale(val multiplier: Float, val label: String) {
     }
 }
 
+/** Why a "Mark as read" tap was refused — drives the lock pop-up's message. */
+enum class LockReason { PAGE_ORDER, SURAH_ORDER }
+
 data class SurahDetailUiState(
     val surah: SurahEntity? = null,
     val ayahs: List<AyahEntity> = emptyList(),
@@ -44,16 +47,24 @@ data class SurahDetailUiState(
     val bismillahPre: Boolean = true,
     val fontScale: ReaderFontScale = ReaderFontScale.MEDIUM,
     val error: Boolean = false,
-    // PHASE-6.3 resume — first-open jump target (legacy bookmark, else last
-    // read page); completed surahs restart cleanly at page 1.
+    // PHASE-6.3 resume — first-open jump target (legacy pin, else last marked
+    // page); completed surahs restart cleanly at page 1.
     val resumeAyah: Int? = null,
     // PHASE-6.4 — button-only progress: furthest marked-read ayah. Drives
     // the "Mark as read" ⇄ "Read ✓" button state per page.
     val furthestAyah: Int = 0,
     val totalAyahs: Int = 0,
-    // PHASE-6.4 coach marks: 1 = swipe step, 2 = mark-as-read step,
-    // null = finished (or never shown). Stored as ONE prefs flag.
-    val coachStep: Int? = null
+    // PHASE-6.5 — pages unlock in order: the first ayah of the next unread
+    // page (the only page whose button is active). 0 = nothing locked yet.
+    val nextUnlockAyah: Int = 0,
+    // PHASE-6.5 — the surah that must be finished first (null = this surah is
+    // unlocked). A fresh reader is locked to every surah except Al-Fatihah.
+    val blockerSurahName: String? = null,
+    // PHASE-6.5 lock pop-up — shown when a locked button was tapped anyway.
+    val lockReason: LockReason? = null,
+    // PHASE-6.5 — the remaining coach ("One tap saves your place"), one step,
+    // one prefs flag. The swipe lesson is filed for PHASE-9 onboarding.
+    val coachVisible: Boolean = false
 )
 
 @HiltViewModel
@@ -97,6 +108,9 @@ class SurahDetailViewModel @Inject constructor(
                     }
                 }
 
+                // PHASE-6.5 read-in-order gate — who blocks this surah?
+                val blocker = progress.findBlockerSurah(surahNumber)
+
                 SurahDetailUiState(
                     surah = detail.surah,
                     ayahs = detail.ayahs,
@@ -108,7 +122,9 @@ class SurahDetailViewModel @Inject constructor(
                     resumeAyah = resumeAyah,
                     furthestAyah = row?.furthestAyah ?: 0,
                     totalAyahs = detail.ayahs.size,
-                    coachStep = if (!coachDone && detail.ayahs.isNotEmpty()) 1 else null
+                    nextUnlockAyah = row?.furthestAyah?.plus(1)?.takeIf { it <= detail.ayahs.size } ?: 1,
+                    blockerSurahName = blocker?.nameEnglish,
+                    coachVisible = !coachDone && detail.ayahs.isNotEmpty()
                 )
             } catch (e: Exception) {
                 // Nothing cached + network failed (Rule 8) → friendly error, retry.
@@ -127,20 +143,41 @@ class SurahDetailViewModel @Inject constructor(
     }
 
     /**
-     * PHASE-6.4 — the ONLY progress writer: "Mark as read". Marking a page
-     * records it as read (furthest advances to the running max — re-marking
-     * an early page never regresses) and moves the resume point to its first
-     * ayah. On an already-read page the tap simply re-pins the place.
-     * Any button press also finishes the coach (the button is the last lesson).
+     * PHASE-6.5 — the only progress writer, now behind the one gate:
+     * - Re-tapping a read page always works (re-pins the resume point).
+     * - A page beyond the next unread page in THIS surah → PAGE_ORDER popup.
+     * - Any page in a surah that an earlier unfinished surah blocks →
+     *   SURAH_ORDER popup (real blocker name shown by the screen).
+     * Allowed marks also finish the coach (the button is its last lesson).
      */
     fun markPage(pageFirstAyah: Int, pageLastAyah: Int) {
-        val total = _uiState.value.totalAyahs
+        val state = _uiState.value
+        val total = state.totalAyahs
         if (total <= 0) return
-        val coachWasActive = _uiState.value.coachStep != null
+
+        val alreadyRead = state.furthestAyah >= pageLastAyah
+        val isUnlockedSurah = state.blockerSurahName == null
+        val isNextInOrder = pageFirstAyah <= state.furthestAyah + 1
+
+        when {
+            alreadyRead -> Unit // re-pin: always allowed, no popup
+            !isUnlockedSurah -> {
+                _uiState.update { it.copy(lockReason = LockReason.SURAH_ORDER) }
+                return
+            }
+            !isNextInOrder -> {
+                _uiState.update { it.copy(lockReason = LockReason.PAGE_ORDER) }
+                return
+            }
+        }
+
+        val coachWasActive = state.coachVisible
         _uiState.update {
             it.copy(
                 furthestAyah = maxOf(it.furthestAyah, pageLastAyah),
-                coachStep = null
+                nextUnlockAyah = (pageLastAyah + 1).takeIf { next -> next <= total } ?: 0,
+                lockReason = null,
+                coachVisible = false
             )
         }
         if (coachWasActive) {
@@ -151,17 +188,15 @@ class SurahDetailViewModel @Inject constructor(
         }
     }
 
-    /** Coach step 1 → 2: the user actually swiped (or tapped "Got it"). */
-    fun onCoachAdvance() {
-        if (_uiState.value.coachStep == 1) {
-            _uiState.update { it.copy(coachStep = 2) }
-        }
+    /** The lock pop-up was acknowledged — retire it until the next locked tap. */
+    fun consumeLockPopup() {
+        _uiState.update { it.copy(lockReason = null) }
     }
 
-    /** Coach finished via step-2 "Got it" — retired forever. */
+    /** The remaining coach dismissed via "Got it" — retired forever. */
     fun onCoachDone() {
-        if (_uiState.value.coachStep == 2) {
-            _uiState.update { it.copy(coachStep = null) }
+        if (_uiState.value.coachVisible) {
+            _uiState.update { it.copy(coachVisible = false) }
             viewModelScope.launch { prefs.setReaderCoachDone() }
         }
     }

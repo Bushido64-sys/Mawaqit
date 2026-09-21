@@ -25,6 +25,13 @@ data class SurahProgress(
 }
 
 /**
+ * PHASE-6.5 — the surah that blocks a later one in the read-in-order chain
+ * (the first, lowest-numbered surah that is not completed). Drives the
+ * reader's "finish X first" lock popup.
+ */
+data class SurahBlocker(val surahNumber: Int, val nameEnglish: String)
+
+/**
  * Aggregated Quran-wide reading progress for the continue card.
  *
  * PHASE-6.4 — `continueSurah` follows the last MARKED surah (browsing other
@@ -74,6 +81,15 @@ interface ReadingProgressRepository {
 
     /** Continue-card data: last-marked (or up-next) surah + Quran-wide totals. */
     suspend fun getQuranProgress(): QuranProgress
+
+    /**
+     * PHASE-6.5 read-in-order gate — the FIRST (lowest-numbered) surah before
+     * [beforeSurahNumber] that is not completed, or null when every earlier
+     * surah is done. A missing row counts as NOT completed, so a fresh reader
+     * starts locked to Al-Fatihah (surah 1 is always unlocked) and each next
+     * surah unlocks exactly when the previous one is 100% finished.
+     */
+    suspend fun findBlockerSurah(beforeSurahNumber: Int): SurahBlocker?
 }
 
 @Singleton
@@ -110,6 +126,19 @@ class ReadingProgressRepositoryImpl @Inject constructor(
                 bookmarkAyah = existing?.bookmarkAyah ?: 0  // legacy column (PHASE-6.3), no longer written
             )
         )
+    }
+
+    override suspend fun findBlockerSurah(beforeSurahNumber: Int): SurahBlocker? {
+        if (beforeSurahNumber <= 1) return null
+        val rowsBySurah = progressDao.getAll().first()
+            .filter { it.surahNumber < beforeSurahNumber }
+            .associateBy { it.surahNumber }
+        val blockerNumber = (1 until beforeSurahNumber).firstOrNull { n ->
+            rowsBySurah[n]?.completed != true
+        } ?: return null
+        val name = surahDao.getAllSurahs().first()
+            .find { it.number == blockerNumber }?.nameEnglish.orEmpty()
+        return SurahBlocker(blockerNumber, name)
     }
 
     override suspend fun getQuranProgress(): QuranProgress {
