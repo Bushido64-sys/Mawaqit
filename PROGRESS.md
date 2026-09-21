@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-21 — [PHASE-6.3] user-PASSED with 5 improvement notes → [PHASE-6.4] "Only the Button Counts" + Coach Marks BUILT, PUSHED & BUILD-GREEN (5b09cad, 7 files, +418/−242) — AWAITING user test (checklist below). APK: GitHub Actions auto-build on every push.**
+> **Last updated: 2026-09-21 — [PHASE-6.4] user-PASSED ("Good fucking job") → [PHASE-6.5] "Locked Pages" BUILT, PUSHED & BUILD-GREEN first-try (c278e81, 4 files, +243/−152) — AWAITING user test (checklist below). APK: GitHub Actions auto-build on every push.**
 
 ---
 
@@ -18,24 +18,23 @@ from a detailed guidebook (`mawaqit-guidebook/`), with the user learning as we g
 [PHASE-5.2] on device — "the widget looks better than before" — fonts +
 responsive layouts + 5s popup all verified.
 
-**[PHASE-6.3] PASSED (user: "better than before"). NOW: [PHASE-6.4] "Only the
-Button Counts" built (5b09cad) — AWAITING user test. Open the next session by
-asking for THESE results BEFORE any new work:
+**[PHASE-6.4] PASSED (user: "Good fucking job"). NOW: [PHASE-6.5] "Locked
+Pages" built (c278e81) — AWAITING user test. Open the next session by asking
+for THESE results BEFORE any new work:
 | # | Test | Expect |
 |---|------|--------|
-| 1 | First surah open, fresh install state | Coach mark ① "Swipe to turn the page" pop-up (navy card, gold border, animated 👇→); reader still usable behind it |
-| 2 | Swipe (or tap "Got it") | Coach advances to ② "Save your progress" with a mini "Mark as read" pill replica |
-| 3 | Swipe pages WITHOUT tapping the button | Progress card does NOT change — swiping records NOTHING (button-only) |
-| 4 | Tap "Mark as read" | Pill fills solid gold "Read ✓"; Continue card now follows THIS surah |
-| 5 | Open random other surahs, back to list | Card still shows the MARKED surah (browsing can't move it — the 6.3 bug fix) |
-| 6 | Finish a surah (mark its last page) → list | "Up Next" card: "You finished X — Y is next" + "✓ N surahs completed" line; card NEVER disappears now |
-| 7 | Card visuals | Gold frame INSET (thin blue mat between card edge and gold line); Continue/Start button SOLID gold, blue border, navy text |
-| 8 | Reopen the reader later | NO coach marks (one prefs flag retires both); "Resumed at page N" toast on marked surahs |
-| 9 | Al-Fatihah / airplane mode / XL re-fit | NO Bismillah; instant cached open; XL → fewer verses per page (regressions) |
-| 10 | Azan / widget / home | Untouched (regression) |
-Known safe caveats: legacy PHASE-6.3 bookmarks/bookmarkAyah column still exist
-and still win resume priority (harmless); 6.2's gradient background +
-safety-valve scroll page still apply.
+| 1 | Fresh-install reader, or any surah while an earlier one is unfinished | Locked pages' "Mark as read" pill DIMMED (~40%); only the next unread page of the unlocked surah is active |
+| 2 | Tap a dimmed pill on a LATER page, same surah | Modal "Page locked" popup (navy + gold + Got it): "Mark the previous page as read first — pages unlock in order." |
+| 3 | Tap a pill in a surah while an earlier surah is unfinished | Popup names the REAL blocker: "X isn't finished yet. The Quran is read in order — finish it, and this surah unlocks." |
+| 4 | Mark pages IN ORDER (page 1 → 2 → … to surah end) | Each mark lights the next pill instantly; finishing a surah unlocks the next surah (its first page active) |
+| 5 | Re-tap any "Read ✓" page | ALWAYS works, no popup — silently re-pins the resume point |
+| 6 | ☰ sheet on a gesture-nav phone | Toggle + size pills + font preview all sit ABOVE the system nav buttons — nothing overlaid |
+| 7 | First-ever reader open | ONE coach only: "One tap saves your place" — NO swipe lesson, NO arrow animation |
+| 8 | Regression sweep | Swiping still records nothing; browsing doesn't move the Continue card; resume toast works; Al-Fatihah has no Bismillah; azan/widget/home untouched |
+Known safe caveats: legacy PHASE-6.3 bookmarkAyah column still wins resume
+priority (harmless); progress rows created by the pre-6.5 auto-marking era are
+respected as-is — the user marked 1→5 in order, so the chain stays consistent
+on their device; 6.2's gradient background + safety-valve scroll still apply.
 
 **PHASE-6.3 implementation facts (b95e5d7, 2026-09-21):**
 - reading_progress table (Room v2): surahNumber PK, lastAyah (resume target =
@@ -49,6 +48,33 @@ safety-valve scroll page still apply.
   pager settle records lastAyah=first-of-page, furthest=last-of-page.
   ↑ SUPERSEDED in PHASE-6.4: opening/swiping writes NOTHING — markPage()
   (the "Mark as read" button) is the ONLY progress writer.
+
+**PHASE-6.5 "Locked Pages" facts (c278e81, 2026-09-21 — 4 files, +243/−152,
+build GREEN first try):**
+- ReadingProgressRepository: NEW SurahBlocker(surahNumber, nameEnglish) +
+  findBlockerSurah(beforeSurahNumber) — first LOWEST-numbered surah < N with
+  row==null OR completed!=true. Fresh reader → every surah except 1 blocked
+  (missing row counts as not-completed). NO DAO change, NO migration.
+- SurahDetailViewModel: state gained nextUnlockAyah (furthest+1, the only
+  markable page), blockerSurahName, lockReason (PAGE_ORDER | SURAH_ORDER),
+  coachVisible (bool — single step now). markPage() gated: re-tap of a read
+  page always allowed (re-pin); !unlockedSurah → SURAH_ORDER popup;
+  pageFirstAyah > furthest+1 → PAGE_ORDER popup; allowed marks retire the
+  coach. consumeLockPopup() dismisses.
+  ↑ SUPERSEDES 6.4's two-step coachStep (1=swipe/2=button): the swipe lesson
+  + animated 👇→ arrow are DELETED from the reader and FILED in
+  PHASE_9_POLISH.md addendum (returns in PHASE-9 onboarding; user supplies
+  the custom swipe animation — do NOT re-implement the arrow).
+- SurahDetailScreen: LockPopup (navy card + gold border + Got it, MODAL —
+  scrim blocks taps via pointerInput detectTapGestures, unlike the coach's
+  pass-through scrim); locked pills alpha 0.4 but still tappable (tap →
+  explanation, never punishment); ReaderSettingsSheet content wrapped in
+  navigationBarsPadding() (font preview no longer under the nav bar —
+  user-reported overlay bug).
+- strings: coach_button_title rewritten ("One tap saves your place"), body
+  expanded (user asked for encouraging, not AI-slop); lock_title, lock_page_order,
+  lock_surah_order (%1$s = blocker name) added; coach_swipe_* retired.
+- READER_COACH_DONE pref REUSED for the single coach — no schema change.
 
 **PHASE-6.4 implementation facts (5b09cad, 2026-09-21):**
 - ReadingProgressRepository: recordProgress/setBookmark REMOVED → single
