@@ -86,7 +86,7 @@ class QuranListViewModel @Inject constructor(
         }
     }
 
-    /** Every progress write (auto page turns + bookmarks) recomputes the card. */
+    /** Every "Mark as read" press (PHASE-6.4: the only progress writer) recomputes the card. */
     private fun loadProgress() {
         viewModelScope.launch {
             progress.getAll().collect {

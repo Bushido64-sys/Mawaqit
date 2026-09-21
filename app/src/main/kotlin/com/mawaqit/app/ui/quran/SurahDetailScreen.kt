@@ -1,12 +1,13 @@
 package com.mawaqit.app.ui.quran
 
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -85,22 +86,21 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 /**
  * PHASE-6.2 Surah reading screen — "The Perfect Page".
  *
- * User-directed refinement of PHASE-6.1:
- * 1. Pages are fit to the REAL screen via [FitPages] (TextMeasurer) — the
- *    card never scrolls; swiping is the only navigation (safety valve: a
- *    single ayah taller than a whole page, e.g. Ayat al-Kursi at XL).
- * 2. The translation toggle moved OFF the page — the corner ☰ chip opens a
- *    "Reading Settings" sheet with translation mode + text size together.
- *    The page itself is pure text. Phase 8's Settings screen will surface
- *    the same saved preferences.
- * 3. Page dots are a sliding window of 7 centered on the active dot, plus an
- *    explicit "Page X of Y · Verses a–b" line — infinite surahs can't lose you.
+ * Pages are fit to the REAL screen via [FitPages] (TextMeasurer) — the card
+ * never scrolls; swiping is the only navigation. The ☰ chip opens a
+ * "Reading Settings" sheet (translation mode + text size). Page dots are a
+ * sliding window of 7 plus an explicit "Page X of Y · Verses a–b" line.
  *
- * PHASE-6.3 "Keep My Place":
- * 4. Reopening a started surah jumps straight to the last-read page (pinned
- *    bookmark wins) with a small "Resumed at page N" toast.
- * 5. A settled page counts as read (auto-progress); the gold footer strip
- *    pins/unpins the bookmark ("Mark page" ⇄ "Marked ✓").
+ * PHASE-6.4 "Only the Button Counts":
+ * - Progress is written by EXACTLY one event: tapping "Mark as read".
+ *   Swiping and opening record nothing — browsing can never move the
+ *   Continue card.
+ * - Button states: unread page → outlined "Mark as read"; tapped → solid
+ *   gold "Read ✓" (tap again on a read page re-pins the resume point).
+ * - The old text swipe hint is replaced by a two-step coach mark
+ *   (DESIGN.md pop-up style): ① swipe lesson (non-blocking — the user can
+ *   swipe straight through it) → ② "Mark as read" lesson. One prefs flag
+ *   retires both forever.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,9 +131,9 @@ fun SurahDetailScreen(
                 )
                 else -> MushafPager(
                     state = state,
-                    onFirstSwipe = viewModel::onFirstSwipe,
-                    onPageSettled = viewModel::onPageSettled,
-                    onBookmarkClick = viewModel::markPage,
+                    onCoachAdvance = viewModel::onCoachAdvance,
+                    onCoachDone = viewModel::onCoachDone,
+                    onMarkClick = viewModel::markPage,
                     onConsumeResume = viewModel::consumeResumeToast
                 )
             }
@@ -201,14 +201,14 @@ private fun TopBar(
     }
 }
 
-/** Pager of fitted mushaf pages + first-visit swipe hint + resume/bookmark logic. */
+/** Pager of fitted mushaf pages + resume logic + PHASE-6.4 coach marks. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MushafPager(
     state: SurahDetailUiState,
-    onFirstSwipe: () -> Unit,
-    onPageSettled: (Int, Int) -> Unit,
-    onBookmarkClick: (Int) -> Unit,
+    onCoachAdvance: () -> Unit,
+    onCoachDone: () -> Unit,
+    onMarkClick: (Int, Int) -> Unit,
     onConsumeResume: () -> Unit
 ) {
     val bismillah = stringResource(R.string.bismillah)
@@ -217,9 +217,8 @@ private fun MushafPager(
     val context = LocalContext.current
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        // PHASE-6.2 fix #1 — measure-then-pack: pages fit THIS screen exactly,
+        // PHASE-6.2 — measure-then-pack: pages fit THIS screen exactly,
         // re-fitted whenever font size / translation mode / content changes.
-        // PHASE-6.3 — the mark-page strip is part of every page's chrome.
         val footerExtraPx = with(density) { FitPages.MUSHAF_FOOTER_H.roundToPx() }
         val fittedPages = remember(
             state.ayahs, state.surah, state.displayMode, state.fontScale,
@@ -242,8 +241,8 @@ private fun MushafPager(
         }
         val pagerState = rememberPagerState(pageCount = { fittedPages.size })
 
-        // PHASE-6.3 — resume: jump straight to the stored page (bookmark or
-        // last read) once pages exist; toast once, then retire the target.
+        // PHASE-6.3 — resume: jump straight to the stored page (legacy pin or
+        // last MARKED page) once pages exist; toast once, then retire it.
         LaunchedEffect(fittedPages.size, state.resumeAyah) {
             val target = state.resumeAyah ?: return@LaunchedEffect
             if (fittedPages.isEmpty()) return@LaunchedEffect
@@ -259,23 +258,12 @@ private fun MushafPager(
             onConsumeResume()
         }
 
-        // Any horizontal drag → the swipe hint retires forever (ViewModel guards).
+        // PHASE-6.4 coach step 1 — any real swipe advances the lesson. Nothing
+        // is recorded anymore (button-only progress); this only teaches.
         LaunchedEffect(pagerState) {
             snapshotFlow { pagerState.currentPageOffsetFraction }
                 .distinctUntilChanged()
-                .collect { fraction -> if (fraction != 0f) onFirstSwipe() }
-        }
-
-        // PHASE-6.3 — a settled page is a read page: record lastAyah (first
-        // ayah of the page, the resume target) + furthestAyah (running max).
-        LaunchedEffect(pagerState, fittedPages.size) {
-            snapshotFlow { pagerState.currentPage }
-                .collect { page ->
-                    val ayahs = fittedPages.getOrNull(page)?.ayahs ?: return@collect
-                    val first = ayahs.firstOrNull()?.ayahNumber ?: return@collect
-                    val last = ayahs.lastOrNull()?.ayahNumber ?: first
-                    onPageSettled(first, last)
-                }
+                .collect { fraction -> if (fraction != 0f) onCoachAdvance() }
         }
 
         Box(modifier = Modifier.fillMaxSize()) {
@@ -292,26 +280,17 @@ private fun MushafPager(
                     mode = state.displayMode,
                     fontScale = state.fontScale.multiplier,
                     showBismillah = page == 0 && state.bismillahPre,
-                    bookmarkAyah = state.bookmarkAyah,
-                    onBookmarkClick = onBookmarkClick
+                    furthestAyah = state.furthestAyah,
+                    onMarkClick = onMarkClick
                 )
             }
 
-            AnimatedVisibility(
-                visible = state.showSwipeHint,
-                enter = fadeIn() + slideInVertically { it / 2 },
-                exit = fadeOut(),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 48.dp)
-            ) {
-                Text(
-                    text = "👇 ${stringResource(R.string.reader_swipe_hint)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.9f),
-                    modifier = Modifier
-                        .background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(50))
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
+            // PHASE-6.4 — two-step coach mark replaces the old text hint.
+            state.coachStep?.let { step ->
+                CoachOverlay(
+                    step = step,
+                    onAdvance = onCoachAdvance,
+                    onDone = onCoachDone
                 )
             }
         }
@@ -319,10 +298,139 @@ private fun MushafPager(
 }
 
 /**
+ * PHASE-6.4 coach mark (DESIGN.md pop-up style): deep-navy card, gold border,
+ * dot pagination. The scrim does NOT intercept touches — the reader beneath
+ * stays usable, so the user can literally swipe through lesson ① and press
+ * the real button through lesson ②. "Got it" (or completing the action)
+ * advances/retires the coach.
+ */
+@Composable
+private fun CoachOverlay(
+    step: Int,
+    onAdvance: () -> Unit,
+    onDone: () -> Unit
+) {
+    val transition = rememberInfiniteTransition(label = "coachSwipe")
+    val arrowX by transition.animateFloat(
+        initialValue = -18f,
+        targetValue = 18f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(700, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "coachSwipeArrow"
+    )
+
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        // Visual-only scrim — no pointerInput, so touches pass through.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.55f))
+        )
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 32.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color(0xFF0c2b45))
+                .border(1.dp, PrimaryGold.copy(alpha = 0.75f), RoundedCornerShape(20.dp))
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (step == 1) {
+                Text(
+                    text = stringResource(R.string.coach_swipe_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryGold
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.coach_swipe_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.85f),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(14.dp))
+                // Animated finger: slides left→right, the actual gesture to make.
+                Text(
+                    text = "👇→",
+                    fontSize = 28.sp,
+                    modifier = Modifier.offset(x = arrowX.dp)
+                )
+                Spacer(Modifier.height(14.dp))
+                CoachGotIt(onClick = onAdvance)
+            } else {
+                Text(
+                    text = stringResource(R.string.coach_button_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryGold
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.coach_button_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.85f),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(14.dp))
+                // Mini replica of the exact pill to look for.
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(PrimaryGold.copy(alpha = 0.18f))
+                        .border(1.dp, PrimaryBlue, RoundedCornerShape(50))
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(R.string.reader_mark_as_read),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+                Spacer(Modifier.height(14.dp))
+                CoachGotIt(onClick = onDone)
+            }
+        }
+    }
+}
+
+/** Gold "Got it" pill — the coach's only interactive element. */
+@Composable
+private fun CoachGotIt(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(PrimaryGold)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = stringResource(R.string.coach_got_it),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF071E35)
+        )
+    }
+}
+
+/**
  * One mushaf card: gold-framed deep-navy block, header inside, ayahs
  * center-staged, footer with explicit page position + sliding-window dots,
- * then the PHASE-6.3 mark-page strip. The ayah column scrolls ONLY when
- * FitPages flagged the page oversized.
+ * then the PHASE-6.4 "Mark as read" strip. The ayah column scrolls ONLY
+ * when FitPages flagged the page oversized.
  */
 @Composable
 private fun MushafPage(
@@ -333,8 +441,8 @@ private fun MushafPage(
     mode: DisplayMode,
     fontScale: Float,
     showBismillah: Boolean,
-    bookmarkAyah: Int,
-    onBookmarkClick: (Int) -> Unit
+    furthestAyah: Int,
+    onMarkClick: (Int, Int) -> Unit
 ) {
     val pageAyahs = page.ayahs
     Column(
@@ -446,7 +554,7 @@ private fun MushafPage(
                 }
                 Spacer(Modifier.height(10.dp))
 
-                // PHASE-6.3 — the mark-page strip (fixed height; FitPages
+                // PHASE-6.4 — the ONLY progress writer (fixed height; FitPages
                 // reserves exactly FitPages.MUSHAF_FOOTER_H for it).
                 Row(
                     modifier = Modifier
@@ -454,10 +562,14 @@ private fun MushafPage(
                         .height(FitPages.MUSHAF_FOOTER_H),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    MarkPageButton(
-                        bookmarkAyah = bookmarkAyah,
-                        pageFirstAyah = pageAyahs.first().ayahNumber,
-                        onClick = onBookmarkClick
+                    MarkAsReadButton(
+                        isRead = furthestAyah >= pageAyahs.last().ayahNumber,
+                        onClick = {
+                            onMarkClick(
+                                pageAyahs.first().ayahNumber,
+                                pageAyahs.last().ayahNumber
+                            )
+                        }
                     )
                     Spacer(Modifier.weight(1f))
                     Text(
@@ -472,39 +584,38 @@ private fun MushafPage(
 }
 
 /**
- * PHASE-6.3 — gold-shaded pill with a blue border (user spec): tap to pin
- * this page as the bookmark; fills solid gold with "Marked ✓" while pinned.
+ * PHASE-6.4 — the one button that counts. Unread page → gold-shaded pill
+ * with a blue border, "Mark as read". Page read → solid gold, "Read ✓"
+ * (tapping again simply re-pins the resume point to this page).
  */
 @Composable
-private fun MarkPageButton(
-    bookmarkAyah: Int,
-    pageFirstAyah: Int,
-    onClick: (Int) -> Unit
+private fun MarkAsReadButton(
+    isRead: Boolean,
+    onClick: () -> Unit
 ) {
-    val isMarked = bookmarkAyah == pageFirstAyah
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(if (isMarked) PrimaryGold else PrimaryGold.copy(alpha = 0.18f))
+            .background(if (isRead) PrimaryGold else PrimaryGold.copy(alpha = 0.18f))
             .border(1.dp, PrimaryBlue, RoundedCornerShape(50))
-            .clickable { onClick(pageFirstAyah) }
+            .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.MenuBook,
             contentDescription = null,
-            tint = if (isMarked) Color(0xFF071E35) else Color.White,
+            tint = if (isRead) Color(0xFF071E35) else Color.White,
             modifier = Modifier.size(14.dp)
         )
         Spacer(Modifier.width(6.dp))
         Text(
             text = stringResource(
-                if (isMarked) R.string.reader_marked else R.string.reader_mark_page
+                if (isRead) R.string.reader_marked else R.string.reader_mark_as_read
             ),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
-            color = if (isMarked) Color(0xFF071E35) else Color.White
+            color = if (isRead) Color(0xFF071E35) else Color.White
         )
     }
 }

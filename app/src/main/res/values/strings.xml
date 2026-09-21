@@ -69,13 +69,19 @@
     <string name="reader_font_size">Text Size</string>
     <string name="reader_translation">Translation</string>
     <string name="reader_settings">Reading Settings</string>
-    <string name="reader_swipe_hint">Swipe to turn the page</string>
     <string name="content_desc_font_size">Text size</string>
     <string name="content_desc_reader_settings">Reading settings</string>
 
+    <!-- Coach marks (PHASE-6.4) -->
+    <string name="coach_swipe_title">Swipe to turn the page</string>
+    <string name="coach_swipe_body">Just swipe — no scrolling. The next page slides right in.</string>
+    <string name="coach_button_title">Save your progress</string>
+    <string name="coach_button_body">Finished a page? Tap ‘Mark as read’ and we’ll remember your place.</string>
+    <string name="coach_got_it">Got it</string>
+
     <!-- Mushaf reader progress (PHASE-6.3) -->
-    <string name="reader_mark_page">Mark page</string>
-    <string name="reader_marked">Marked ✓</string>
+    <string name="reader_mark_as_read">Mark as read</string>
+    <string name="reader_marked">Read ✓</string>
     <string name="reader_resumed">Resumed at page %1$d</string>
     <string name="reader_page_short">Page %1$d of %2$d</string>
 
@@ -84,6 +90,10 @@
     <string name="progress_continue_body">%1$s · Ayah %2$d of %3$d</string>
     <string name="progress_quran_total">Whole Quran</string>
     <string name="progress_completed">Completed</string>
+    <string name="progress_up_next">Up Next</string>
+    <string name="progress_up_next_body">You finished %1$s — %2$s is next</string>
+    <string name="progress_start_reading">Start Reading</string>
+    <string name="progress_completed_count">✓ %1$d surahs completed</string>
 
     <!-- Qibla -->
     <string name="qibla_direction">Qibla Direction</string>

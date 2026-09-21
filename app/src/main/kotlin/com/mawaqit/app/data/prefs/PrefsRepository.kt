@@ -70,7 +70,7 @@ object PrefKeys {
 
     // Quran reader (PHASE-6.1) — mushaf card redesign
     const val READER_FONT_SCALE = "reader_font_scale" // Float multiplier 0.8–1.5
-    const val READER_SWIPE_HINT_SEEN = "reader_swipe_hint_seen" // Boolean
+    const val READER_COACH_DONE = "reader_coach_done" // Boolean — PHASE-6.4 coach marks seen
 }
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "mawaqit_prefs")
@@ -244,11 +244,11 @@ class PrefsRepository @Inject constructor(
         store.edit { it[floatPreferencesKey(PrefKeys.READER_FONT_SCALE)] = scale }
     }
 
-    /** First-visit swipe hint — shown once, then forever quiet. */
-    val readerSwipeHintSeen: Flow<Boolean> =
-        store.data.map { it[booleanPreferencesKey(PrefKeys.READER_SWIPE_HINT_SEEN)] ?: false }
+    /** PHASE-6.4 coach marks (swipe + mark-as-read) — shown once, then forever quiet. */
+    val readerCoachDone: Flow<Boolean> =
+        store.data.map { it[booleanPreferencesKey(PrefKeys.READER_COACH_DONE)] ?: false }
 
-    suspend fun setReaderSwipeHintSeen() {
-        store.edit { it[booleanPreferencesKey(PrefKeys.READER_SWIPE_HINT_SEEN)] = true }
+    suspend fun setReaderCoachDone() {
+        store.edit { it[booleanPreferencesKey(PrefKeys.READER_COACH_DONE)] = true }
     }
 }

@@ -281,9 +281,14 @@ private fun SurahList(
 }
 
 /**
- * PHASE-6.3 — the Continue Reading card: deep blue with a gold border,
- * this-surah + whole-Quran gold progress bars, and a gold "Continue"
- * button that reopens the reader at the last-read page.
+ * PHASE-6.4 — the Continue Reading card, two modes:
+ * - normal: follows the last MARKED surah (browsing never moves it);
+ * - "Up next": every touched surah is finished → points at the next one
+ *   (this is what fixed the vanishing-card bug).
+ *
+ * The gold frame sits INSET — a thin blue "mat" shows between the card edge
+ * and the gold line (user spec: the border lives a few pixels inside the box).
+ * Button is solid gold with a blue border and deep-navy text (never grey).
  */
 @Composable
 private fun QuranProgressCard(
@@ -291,66 +296,99 @@ private fun QuranProgressCard(
     onContinueClick: (Int) -> Unit
 ) {
     val surah = progress.continueSurah ?: return
+    // Outer box = the blue card surface.
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(SurfaceDeep)
-            .border(1.dp, PrimaryGold.copy(alpha = 0.75f), RoundedCornerShape(20.dp))
-            .padding(16.dp)
+            .padding(4.dp)
     ) {
-        Text(
-            text = stringResource(R.string.progress_continue),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = PrimaryGold
-        )
-        Spacer(Modifier.height(6.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = stringResource(
-                    R.string.progress_continue_body,
-                    surah.nameEnglish,
-                    surah.furthestAyah,
-                    surah.totalAyahs
-                ),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = surah.nameArabic,
-                fontFamily = NotoNaskhArabicFamily,
-                fontSize = 18.sp,
-                textAlign = TextAlign.End,
-                color = Color.White
-            )
-        }
-        Spacer(Modifier.height(12.dp))
-        ProgressBar(label = surah.nameEnglish, percent = surah.percent)
-        Spacer(Modifier.height(10.dp))
-        ProgressBar(
-            label = stringResource(R.string.progress_quran_total),
-            percent = progress.percent
-        )
-        Spacer(Modifier.height(14.dp))
-        Box(
+        // Inset gold frame — 4dp of blue shows between edge and line.
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(50))
-                .background(PrimaryGold.copy(alpha = 0.18f))
-                .border(1.dp, PrimaryBlue, RoundedCornerShape(50))
-                .clickable { onContinueClick(surah.surahNumber) }
-                .padding(vertical = 12.dp),
-            contentAlignment = Alignment.Center
+                .clip(RoundedCornerShape(17.dp))
+                .border(1.5.dp, PrimaryGold.copy(alpha = 0.85f), RoundedCornerShape(17.dp))
+                .padding(12.dp)
         ) {
             Text(
-                text = stringResource(R.string.progress_continue),
-                style = MaterialTheme.typography.labelLarge,
+                text = stringResource(
+                    if (progress.upNext) R.string.progress_up_next else R.string.progress_continue
+                ),
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = PrimaryGold
             )
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = if (progress.upNext) {
+                        stringResource(
+                            R.string.progress_up_next_body,
+                            progress.lastCompletedName,
+                            surah.nameEnglish
+                        )
+                    } else {
+                        stringResource(
+                            R.string.progress_continue_body,
+                            surah.nameEnglish,
+                            surah.furthestAyah,
+                            surah.totalAyahs
+                        )
+                    },
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = surah.nameArabic,
+                    fontFamily = NotoNaskhArabicFamily,
+                    fontSize = 18.sp,
+                    textAlign = TextAlign.End,
+                    color = Color.White
+                )
+            }
+            if (progress.completedCount > 0) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.progress_completed_count, progress.completedCount),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryGold
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            ProgressBar(label = surah.nameEnglish, percent = surah.percent)
+            Spacer(Modifier.height(10.dp))
+            ProgressBar(
+                label = stringResource(R.string.progress_quran_total),
+                percent = progress.percent
+            )
+            Spacer(Modifier.height(14.dp))
+            // Solid gold pill with a blue border and deep-navy text — reads
+            // as unmistakably gold (PHASE-6.4: the 18% wash looked grey).
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(50))
+                    .background(PrimaryGold)
+                    .border(1.dp, PrimaryBlue, RoundedCornerShape(50))
+                    .clickable { onContinueClick(surah.surahNumber) }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(
+                        if (progress.upNext) R.string.progress_start_reading
+                        else R.string.progress_continue
+                    ),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF071E35)
+                )
+            }
         }
     }
 }

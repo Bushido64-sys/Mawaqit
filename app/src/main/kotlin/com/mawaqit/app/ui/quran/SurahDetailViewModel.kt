@@ -43,12 +43,17 @@ data class SurahDetailUiState(
     val displayMode: DisplayMode = DisplayMode.ARABIC_ENGLISH,
     val bismillahPre: Boolean = true,
     val fontScale: ReaderFontScale = ReaderFontScale.MEDIUM,
-    val showSwipeHint: Boolean = false,
     val error: Boolean = false,
-    // PHASE-6.3 "Keep My Place":
-    val resumeAyah: Int? = null,   // first-open jump target (bookmark, else last page) — consumed after use
-    val bookmarkAyah: Int = 0,     // pinned page's first ayah; 0 = none
-    val totalAyahs: Int = 0        // completion math for auto-progress
+    // PHASE-6.3 resume — first-open jump target (legacy bookmark, else last
+    // read page); completed surahs restart cleanly at page 1.
+    val resumeAyah: Int? = null,
+    // PHASE-6.4 — button-only progress: furthest marked-read ayah. Drives
+    // the "Mark as read" ⇄ "Read ✓" button state per page.
+    val furthestAyah: Int = 0,
+    val totalAyahs: Int = 0,
+    // PHASE-6.4 coach marks: 1 = swipe step, 2 = mark-as-read step,
+    // null = finished (or never shown). Stored as ONE prefs flag.
+    val coachStep: Int? = null
 )
 
 @HiltViewModel
@@ -76,30 +81,20 @@ class SurahDetailViewModel @Inject constructor(
                 // pager fits once with the final size (no late re-fit jump).
                 val fontScale = ReaderFontScale.from(prefs.readerFontScale.first())
                 val detail = repo.getSurahDetail(surahNumber)
-                val hintSeen = prefs.readerSwipeHintSeen.first()
+                val coachDone = prefs.readerCoachDone.first()
                 val row = progress.getForSurahOnce(surahNumber)
 
-                // Resume target: pinned bookmark wins, else the last-read page.
-                // A completed surah restarts cleanly at page 1.
+                // PHASE-6.4 — opening a surah WRITES NOTHING. Browsing other
+                // surahs must never move the Continue card; progress changes
+                // on exactly one event: the "Mark as read" button. This is a
+                // read-only lookup for the resume jump.
                 val resumeAyah = row?.let { r ->
                     when {
                         r.completed -> null
-                        r.bookmarkAyah > 0 -> r.bookmarkAyah
+                        r.bookmarkAyah > 0 -> r.bookmarkAyah // legacy PHASE-6.3 pin
                         r.lastAyah > 1 -> r.lastAyah
                         else -> null
                     }
-                }
-
-                // Opening a surah counts as reading its first page: creates the
-                // row on first open, refreshes lastReadAt otherwise. furthest
-                // never regresses (repository keeps the max).
-                if (detail.ayahs.isNotEmpty()) {
-                    progress.recordProgress(
-                        surahNumber = surahNumber,
-                        lastAyah = resumeAyah ?: 1,
-                        furthestAyah = 1,
-                        totalAyahs = detail.ayahs.size
-                    )
                 }
 
                 SurahDetailUiState(
@@ -109,11 +104,11 @@ class SurahDetailViewModel @Inject constructor(
                     displayMode = _uiState.value.displayMode,
                     bismillahPre = detail.bismillahPre,
                     fontScale = fontScale,
-                    showSwipeHint = !hintSeen && detail.ayahs.isNotEmpty(),
                     error = false,
                     resumeAyah = resumeAyah,
-                    bookmarkAyah = row?.bookmarkAyah ?: 0,
-                    totalAyahs = detail.ayahs.size
+                    furthestAyah = row?.furthestAyah ?: 0,
+                    totalAyahs = detail.ayahs.size,
+                    coachStep = if (!coachDone && detail.ayahs.isNotEmpty()) 1 else null
                 )
             } catch (e: Exception) {
                 // Nothing cached + network failed (Rule 8) → friendly error, retry.
@@ -131,36 +126,44 @@ class SurahDetailViewModel @Inject constructor(
         viewModelScope.launch { prefs.setReaderFontScale(scale.multiplier) }
     }
 
-    /** First swipe on the pager → the hint never shows again. */
-    fun onFirstSwipe() {
-        if (!_uiState.value.showSwipeHint) return
-        _uiState.update { it.copy(showSwipeHint = false) }
-        viewModelScope.launch { prefs.setReaderSwipeHintSeen() }
-    }
-
     /**
-     * PHASE-6.3 auto-progress: the pager settled on a page → that page is
-     * "read". lastAyah = first ayah of the page (resume target), furthest =
-     * last ayah of the page (repository keeps the running max → completion).
+     * PHASE-6.4 — the ONLY progress writer: "Mark as read". Marking a page
+     * records it as read (furthest advances to the running max — re-marking
+     * an early page never regresses) and moves the resume point to its first
+     * ayah. On an already-read page the tap simply re-pins the place.
+     * Any button press also finishes the coach (the button is the last lesson).
      */
-    fun onPageSettled(pageFirstAyah: Int, pageLastAyah: Int) {
+    fun markPage(pageFirstAyah: Int, pageLastAyah: Int) {
         val total = _uiState.value.totalAyahs
         if (total <= 0) return
-        viewModelScope.launch {
-            progress.recordProgress(
-                surahNumber = surahNumber,
-                lastAyah = pageFirstAyah,
-                furthestAyah = pageLastAyah,
-                totalAyahs = total
+        val coachWasActive = _uiState.value.coachStep != null
+        _uiState.update {
+            it.copy(
+                furthestAyah = maxOf(it.furthestAyah, pageLastAyah),
+                coachStep = null
             )
+        }
+        if (coachWasActive) {
+            viewModelScope.launch { prefs.setReaderCoachDone() }
+        }
+        viewModelScope.launch {
+            progress.markPage(surahNumber, pageFirstAyah, pageLastAyah, total)
         }
     }
 
-    /** PHASE-6.3 bookmark pin: tap to pin the page, tap again to unpin. */
-    fun markPage(pageFirstAyah: Int) {
-        val newBookmark = if (_uiState.value.bookmarkAyah == pageFirstAyah) 0 else pageFirstAyah
-        _uiState.update { it.copy(bookmarkAyah = newBookmark) }
-        viewModelScope.launch { progress.setBookmark(surahNumber, newBookmark) }
+    /** Coach step 1 → 2: the user actually swiped (or tapped "Got it"). */
+    fun onCoachAdvance() {
+        if (_uiState.value.coachStep == 1) {
+            _uiState.update { it.copy(coachStep = 2) }
+        }
+    }
+
+    /** Coach finished via step-2 "Got it" — retired forever. */
+    fun onCoachDone() {
+        if (_uiState.value.coachStep == 2) {
+            _uiState.update { it.copy(coachStep = null) }
+            viewModelScope.launch { prefs.setReaderCoachDone() }
+        }
     }
 
     /** The resume toast fired once — retire it so it can't repeat. */

@@ -6,7 +6,6 @@ import com.mawaqit.app.data.db.SurahDao
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 
 /** Progress info for one surah, computed for the UI (percentages resolved). */
@@ -25,11 +24,20 @@ data class SurahProgress(
     val percent: Int get() = if (totalAyahs <= 0) 0 else ((furthestAyah * 100) / totalAyahs).coerceIn(0, 100)
 }
 
-/** Aggregated Quran-wide reading progress for the continue card. */
+/**
+ * Aggregated Quran-wide reading progress for the continue card.
+ *
+ * PHASE-6.4 — `continueSurah` follows the last MARKED surah (browsing other
+ * surahs never changes it). When every touched surah is finished, the card
+ * switches to "Up next": [continueSurah] becomes the surah AFTER the newest
+ * completed one and [upNext] is true.
+ */
 data class QuranProgress(
-    val continueSurah: SurahProgress?,  // most recently read, not-completed surah
-    val readAyahs: Int,                 // sum of furthest ayahs across surahs
-    val totalAyahs: Int,                // sum of ayahs of all 114 surahs
+    val continueSurah: SurahProgress?,   // last-marked surah, or the synthetic up-next row
+    val upNext: Boolean,                 // true → card header "Up next", body references lastCompletedName
+    val lastCompletedName: String,       // English name of the newest finished surah ("" when not up-next)
+    val readAyahs: Int,                  // sum of furthest ayahs across surahs
+    val totalAyahs: Int,                 // sum of ayahs of all 114 surahs
     val completedCount: Int
 ) {
     /** 0..100 — whole-Quran lifetime progress. */
@@ -37,32 +45,34 @@ data class QuranProgress(
 }
 
 /**
- * PHASE-6.3 "Keep My Place" — the reading-progress memory.
- * Stores resume/bookmark positions in AYAH numbers (font-size independent);
- * the reader maps ayah → page after each re-fit. All local Room data.
+ * PHASE-6.3 "Keep My Place" + PHASE-6.4 "Only the Button Counts" — the
+ * reading-progress memory. The ONLY writer is [markPage] (the reader's
+ * "Mark as read" button); opening or swiping a surah writes nothing, so
+ * browsing can never disturb the Continue card.
+ *
+ * Positions are stored in AYAH numbers (font-size independent); the reader
+ * maps ayah → page after each re-fit. All local Room data.
  */
 interface ReadingProgressRepository {
-    /** Live progress rows, newest read first. */
+    /** Live progress rows, newest marked first. */
     fun getAll(): Flow<List<ReadingProgressEntity>>
 
-    /** Live progress for one surah (reader screen). */
+    /** Live progress for one surah (available for Phase 8 settings). */
     fun getForSurah(surahNumber: Int): Flow<ReadingProgressEntity?>
 
     /** One-shot read for resume-on-open. */
     suspend fun getForSurahOnce(surahNumber: Int): ReadingProgressEntity?
 
     /**
-     * Record a page turn: [lastAyah] = first ayah of the new page,
-     * [furthestAyah] = first ayah of the highest page reached.
-     * `furthest = max(existing, furthestAyah)` so re-reading never regresses.
-     * Surah completion is judged against [totalAyahs].
+     * PHASE-6.4 — mark the page at [pageFirstAyah]..[pageLastAyah] as read:
+     * the resume point moves to [pageFirstAyah], furthest advances to the
+     * running max (re-marking an early page never regresses progress), and
+     * completion is judged against [totalAyahs]. Also updates lastReadAt,
+     * which is what the Continue card follows.
      */
-    suspend fun recordProgress(surahNumber: Int, lastAyah: Int, furthestAyah: Int, totalAyahs: Int)
+    suspend fun markPage(surahNumber: Int, pageFirstAyah: Int, pageLastAyah: Int, totalAyahs: Int)
 
-    /** Pin/unpin the bookmark (0 = unpin). */
-    suspend fun setBookmark(surahNumber: Int, ayahNumber: Int)
-
-    /** Continue-card data: newest in-progress surah + Quran-wide totals. */
+    /** Continue-card data: last-marked (or up-next) surah + Quran-wide totals. */
     suspend fun getQuranProgress(): QuranProgress
 }
 
@@ -80,15 +90,15 @@ class ReadingProgressRepositoryImpl @Inject constructor(
     override suspend fun getForSurahOnce(surahNumber: Int): ReadingProgressEntity? =
         progressDao.getForSurahOnce(surahNumber)
 
-    override suspend fun recordProgress(surahNumber: Int, lastAyah: Int, furthestAyah: Int, totalAyahs: Int) {
+    override suspend fun markPage(surahNumber: Int, pageFirstAyah: Int, pageLastAyah: Int, totalAyahs: Int) {
         val existing = progressDao.getForSurahOnce(surahNumber)
-        val newFurthest = maxOf(existing?.furthestAyah ?: 0, furthestAyah)
+        val newFurthest = maxOf(existing?.furthestAyah ?: 0, pageLastAyah)
         val now = System.currentTimeMillis()
         val completed = totalAyahs > 0 && newFurthest >= totalAyahs
         progressDao.upsert(
             ReadingProgressEntity(
                 surahNumber = surahNumber,
-                lastAyah = lastAyah,
+                lastAyah = pageFirstAyah,
                 furthestAyah = newFurthest,
                 lastReadAt = now,
                 completed = completed,
@@ -97,23 +107,7 @@ class ReadingProgressRepositoryImpl @Inject constructor(
                     completed -> existing?.completedAt
                     else -> null
                 },
-                bookmarkAyah = existing?.bookmarkAyah ?: 0
-            )
-        )
-    }
-
-    override suspend fun setBookmark(surahNumber: Int, ayahNumber: Int) {
-        val existing = progressDao.getForSurahOnce(surahNumber)
-        if (existing == null && ayahNumber == 0) return // nothing to unpin
-        progressDao.upsert(
-            ReadingProgressEntity(
-                surahNumber = surahNumber,
-                lastAyah = existing?.lastAyah ?: ayahNumber,
-                furthestAyah = existing?.furthestAyah ?: ayahNumber,
-                lastReadAt = existing?.lastReadAt ?: System.currentTimeMillis(),
-                completed = existing?.completed ?: false,
-                completedAt = existing?.completedAt,
-                bookmarkAyah = ayahNumber
+                bookmarkAyah = existing?.bookmarkAyah ?: 0  // legacy column (PHASE-6.3), no longer written
             )
         )
     }
@@ -126,31 +120,51 @@ class ReadingProgressRepositoryImpl @Inject constructor(
             val total = surahs.find { it.number == row.surahNumber }?.numberOfAyahs ?: 0
             minOf(row.furthestAyah, total)
         }
+        val completedCount = rows.count { it.completed }
 
-        val continueRow = rows
-            .filter { !it.completed }
-            .maxByOrNull { it.lastReadAt }
-        val continueSurah = continueRow?.let { row ->
-            surahs.find { it.number == row.surahNumber }?.let { s ->
+        // Continue target: the newest NOT-completed surah the user marked.
+        // When everything touched is finished → "Up next" = the surah after
+        // the newest completed one (the disappearing-card bug fix).
+        val newest = rows.maxByOrNull { it.lastReadAt }
+            ?: return QuranProgress(null, false, "", readAyahs, totalAyahs, completedCount)
+        val inProgress = rows.filter { !it.completed }.maxByOrNull { it.lastReadAt }
+
+        if (inProgress != null) {
+            val continueSurah = surahs.find { it.number == inProgress.surahNumber }?.let { s ->
                 SurahProgress(
                     surahNumber = s.number,
                     nameEnglish = s.nameEnglish,
                     nameArabic = s.nameArabic,
                     totalAyahs = s.numberOfAyahs,
-                    lastAyah = row.lastAyah,
-                    furthestAyah = row.furthestAyah,
-                    bookmarkAyah = row.bookmarkAyah,
-                    completed = row.completed,
-                    lastReadAt = row.lastReadAt
+                    lastAyah = inProgress.lastAyah,
+                    furthestAyah = inProgress.furthestAyah,
+                    bookmarkAyah = inProgress.bookmarkAyah,
+                    completed = inProgress.completed,
+                    lastReadAt = inProgress.lastReadAt
                 )
             }
+            return QuranProgress(continueSurah, false, "", readAyahs, totalAyahs, completedCount)
         }
 
-        return QuranProgress(
-            continueSurah = continueSurah,
-            readAyahs = readAyahs,
-            totalAyahs = totalAyahs,
-            completedCount = rows.count { it.completed }
-        )
+        // Up-next mode: everything marked is completed.
+        val lastCompletedName = surahs.find { it.number == newest.surahNumber }?.nameEnglish ?: ""
+        if (newest.surahNumber >= 114) {
+            // Whole Quran finished — card hides until a future celebration phase.
+            return QuranProgress(null, true, lastCompletedName, readAyahs, totalAyahs, completedCount)
+        }
+        val upNextSurah = surahs.find { it.number == minOf(newest.surahNumber + 1, 114) }?.let { s ->
+            SurahProgress(
+                surahNumber = s.number,
+                nameEnglish = s.nameEnglish,
+                nameArabic = s.nameArabic,
+                totalAyahs = s.numberOfAyahs,
+                lastAyah = 1,
+                furthestAyah = 0,
+                bookmarkAyah = 0,
+                completed = false,
+                lastReadAt = 0
+            )
+        }
+        return QuranProgress(upNextSurah, true, lastCompletedName, readAyahs, totalAyahs, completedCount)
     }
 }
