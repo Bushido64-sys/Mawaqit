@@ -6,6 +6,8 @@ import com.mawaqit.app.data.repository.PrayerRepository
 import com.mawaqit.app.data.repository.PrayerRepositoryImpl
 import com.mawaqit.app.data.repository.QuranRepository
 import com.mawaqit.app.data.repository.QuranRepositoryImpl
+import com.mawaqit.app.data.repository.ReadingProgressRepository
+import com.mawaqit.app.data.repository.ReadingProgressRepositoryImpl
 import com.mawaqit.app.data.repository.SalahRepository
 import com.mawaqit.app.data.repository.SalahRepositoryImpl
 import dagger.Binds
@@ -33,4 +35,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindQuranRepository(impl: QuranRepositoryImpl): QuranRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindReadingProgressRepository(impl: ReadingProgressRepositoryImpl): ReadingProgressRepository
 }
