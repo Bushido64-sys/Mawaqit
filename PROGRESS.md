@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-21 — [PHASE-6.2] user-PASSED ("looks better than before, good job!") → [PHASE-6.3] "Keep My Place" BUILT, PUSHED & BUILD-GREEN (b95e5d7 + DI fix 645e9d0, 11 files total) — AWAITING user test (checklist below). APK: GitHub Actions auto-build on every push.**
+> **Last updated: 2026-09-21 — [PHASE-6.3] user-PASSED with 5 improvement notes → [PHASE-6.4] "Only the Button Counts" + Coach Marks BUILT, PUSHED & BUILD-GREEN (5b09cad, 7 files, +418/−242) — AWAITING user test (checklist below). APK: GitHub Actions auto-build on every push.**
 
 ---
 
@@ -18,25 +18,24 @@ from a detailed guidebook (`mawaqit-guidebook/`), with the user learning as we g
 [PHASE-5.2] on device — "the widget looks better than before" — fonts +
 responsive layouts + 5s popup all verified.
 
-**[PHASE-6.2] PASSED (user: "looks better than before, good job!"). NOW:
-[PHASE-6.3] "Keep My Place" built (b95e5d7) — AWAITING user test. Open the
-next session by asking for THESE results BEFORE any new work:
+**[PHASE-6.3] PASSED (user: "better than before"). NOW: [PHASE-6.4] "Only the
+Button Counts" built (5b09cad) — AWAITING user test. Open the next session by
+asking for THESE results BEFORE any new work:
 | # | Test | Expect |
 |---|------|--------|
-| 1 | Open a surah you previously read | Jumps straight to your last page + "Resumed at page N" toast |
-| 2 | Open a fresh surah | Starts at page 1 (no toast) |
-| 3 | Any page footer | Gold "Mark page" pill with BLUE border next to "Page X of Y" |
-| 4 | Tap "Mark page" → close → reopen | Pill filled gold "Marked ✓"; you land on the MARKED page (bookmark beats last-read) |
-| 5 | Tap the marked pill again | Unpins (back to "Mark page") |
-| 6 | Quran tab after reading | "Continue Reading" card (blue, gold border): surah + "Ayah X of Y", TWO gold bars (this surah % / Whole Quran %), Continue button reopens the reader |
-| 7 | Swipe to a surah's LAST page → back to list | That row gold-highlighted, number chip gold-bordered, "✓ Completed" tag |
-| 8 | Change font to XL | Pages re-fit; progress % UNCHANGED (stored in ayahs, not pages) |
-| 9 | Al-Fatihah / airplane mode | NO Bismillah; cached surahs open instantly (regressions) |
+| 1 | First surah open, fresh install state | Coach mark ① "Swipe to turn the page" pop-up (navy card, gold border, animated 👇→); reader still usable behind it |
+| 2 | Swipe (or tap "Got it") | Coach advances to ② "Save your progress" with a mini "Mark as read" pill replica |
+| 3 | Swipe pages WITHOUT tapping the button | Progress card does NOT change — swiping records NOTHING (button-only) |
+| 4 | Tap "Mark as read" | Pill fills solid gold "Read ✓"; Continue card now follows THIS surah |
+| 5 | Open random other surahs, back to list | Card still shows the MARKED surah (browsing can't move it — the 6.3 bug fix) |
+| 6 | Finish a surah (mark its last page) → list | "Up Next" card: "You finished X — Y is next" + "✓ N surahs completed" line; card NEVER disappears now |
+| 7 | Card visuals | Gold frame INSET (thin blue mat between card edge and gold line); Continue/Start button SOLID gold, blue border, navy text |
+| 8 | Reopen the reader later | NO coach marks (one prefs flag retires both); "Resumed at page N" toast on marked surahs |
+| 9 | Al-Fatihah / airplane mode / XL re-fit | NO Bismillah; instant cached open; XL → fewer verses per page (regressions) |
 | 10 | Azan / widget / home | Untouched (regression) |
-Known safe caveats: the continue card appears only AFTER the first read
-(opening a surah counts page 1 as read — by design); a COMPLETED surah
-reopens at page 1 (clean restart, bookmark also cleared only if never re-pinned);
-6.2's gradient background + safety-valve scroll page still apply.
+Known safe caveats: legacy PHASE-6.3 bookmarks/bookmarkAyah column still exist
+and still win resume priority (harmless); 6.2's gradient background +
+safety-valve scroll page still apply.
 
 **PHASE-6.3 implementation facts (b95e5d7, 2026-09-21):**
 - reading_progress table (Room v2): surahNumber PK, lastAyah (resume target =
@@ -48,6 +47,32 @@ reopens at page 1 (clean restart, bookmark also cleared only if never re-pinned)
 - Resume priority: bookmark > lastAyah > none; completed surahs → null (page 1).
 - Opening a surah records page-1 progress (creates row, refreshes lastReadAt);
   pager settle records lastAyah=first-of-page, furthest=last-of-page.
+  ↑ SUPERSEDED in PHASE-6.4: opening/swiping writes NOTHING — markPage()
+  (the "Mark as read" button) is the ONLY progress writer.
+
+**PHASE-6.4 implementation facts (5b09cad, 2026-09-21):**
+- ReadingProgressRepository: recordProgress/setBookmark REMOVED → single
+  markPage(surah, firstAyah, lastAyah, total): lastAyah=first-of-page (resume
+  point), furthest=max(running, last-of-page) (never regresses), completed
+  judged vs total, lastReadAt=now (what the card follows).
+- QuranProgress gained upNext + lastCompletedName + completedCount. Continue
+  target = newest NOT-completed marked surah; when ALL marked are completed →
+  upNext mode: continueSurah = the surah AFTER the newest completed one (fixes
+  the vanishing-card bug: rows 1–5 completed used to return null).
+- SurahDetailViewModel: write-on-open deleted; onPageSettled deleted;
+  markPage(pageFirstAyah, pageLastAyah) is the only writer; coachStep state
+  (1=swipe, 2=button, null=done) in ONE prefs flag READER_COACH_DONE
+  (replaces READER_SWIPE_HINT_SEEN).
+- SurahDetailScreen: CoachOverlay (visual-only scrim — touches pass through,
+  so the user can swipe/press through lessons); animated 👇→; "Got it" gold
+  pill; button MarkAsReadButton: unread = gold-shaded + blue border "Mark as
+  read", read = solid gold "Read ✓" (re-tap re-pins resume point).
+- QuranListScreen: inset gold frame (outer blue box → 4dp mat → 1.5dp gold
+  border, corner 17dp), solid-gold Continue button (navy text), up-next
+  header/body/start-reading strings, completed-count line.
+- Network trick (keep): my sandbox's web tools time out on GitHub sometimes,
+  but plain `curl https://api.github.com/...` from bash works — used to read
+  check-run conclusions without `gh` CLI.
 - FitPages.fit gained footerExtraHeight param; MushafPage renders the
   mark-page strip at FitPages.MUSHAF_FOOTER_H (64dp) — constants stay in sync.
 - ReadingProgressRepository: QuranProgress (continueSurah = newest
