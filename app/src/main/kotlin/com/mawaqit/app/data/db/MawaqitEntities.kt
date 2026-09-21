@@ -165,3 +165,36 @@ interface AyahDao {
     @Query("DELETE FROM ayah_cache WHERE surahNumber = :surahNumber")
     suspend fun deleteSurah(surahNumber: Int)
 }
+
+/**
+ * reading_progress (PHASE-6.3) — one row per opened Surah: where the user
+ * stopped, the furthest ayah reached (auto-read progress), and the pinned
+ * bookmark. Pages are font-size dependent, so progress is stored in AYAHS;
+ * the reader maps ayah → page after every re-fit. Entirely local data.
+ */
+@Entity(tableName = "reading_progress", primaryKeys = ["surahNumber"])
+data class ReadingProgressEntity(
+    val surahNumber: Int,      // 1–114
+    val lastAyah: Int,         // resume target — first ayah of the last page
+    val furthestAyah: Int,     // highest ayah reached — drives progress %
+    val lastReadAt: Long,      // ordering for the "Continue Reading" card
+    val completed: Boolean,    // furthestAyah >= numberOfAyahs
+    val completedAt: Long?,    // when it was completed (future celebrations)
+    val bookmarkAyah: Int      // 0 = no pin; else first ayah of the pinned page
+)
+
+@Dao
+interface ReadingProgressDao {
+
+    @Query("SELECT * FROM reading_progress ORDER BY lastReadAt DESC")
+    fun getAll(): Flow<List<ReadingProgressEntity>>
+
+    @Query("SELECT * FROM reading_progress WHERE surahNumber = :surahNumber LIMIT 1")
+    fun getForSurah(surahNumber: Int): Flow<ReadingProgressEntity?>
+
+    @Query("SELECT * FROM reading_progress WHERE surahNumber = :surahNumber LIMIT 1")
+    suspend fun getForSurahOnce(surahNumber: Int): ReadingProgressEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(progress: ReadingProgressEntity)
+}

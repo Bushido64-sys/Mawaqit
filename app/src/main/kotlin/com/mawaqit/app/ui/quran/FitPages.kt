@@ -36,6 +36,13 @@ object FitPages {
     val CARD_PAD_H = 20.dp   // inside the gold-framed card
     val CARD_PAD_V = 16.dp
 
+    /**
+     * PHASE-6.3 — the bottom strip inside the card (Mark-page button + page
+     * indicator). MushafPage renders it with this exact height and consumes
+     * it from its ayah budget, so FitPages reserves the same amount.
+     */
+    val MUSHAF_FOOTER_H = 64.dp
+
     private val EXTRA_SAFETY = 8.dp            // final breathing margin
     private val AYAH_BLOCK_VPAD = 10.dp        // AyahBlock vertical padding (each side)
     private val TRANSLATION_GAP = 4.dp         // gap between Arabic and its translation
@@ -82,7 +89,8 @@ object FitPages {
         measurer: TextMeasurer,
         density: Density,
         maxWidthPx: Int,
-        maxHeightPx: Int
+        maxHeightPx: Int,
+        footerExtraHeight: Int = 0
     ): List<FittedPage> {
         if (ayahs.isEmpty()) return emptyList()
         if (maxWidthPx <= 0 || maxHeightPx <= 0) {
@@ -144,7 +152,9 @@ object FitPages {
         } else 0
 
         val safety = with(density) { EXTRA_SAFETY.roundToPx() }
-        val baseBudget = cardInnerHeight - headerPx - footerPx - safety
+        // footerExtraHeight = the mark-page strip (PHASE-6.3) — same Box the
+        // renderer reserves via Modifier.height(MUSHAF_FOOTER_H).
+        val baseBudget = cardInnerHeight - headerPx - footerPx - safety - footerExtraHeight
         if (baseBudget <= 0) return listOf(FittedPage(ayahs, allowScroll = true))
 
         // Measure every ayah once, then pack greedily.

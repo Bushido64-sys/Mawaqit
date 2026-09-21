@@ -73,6 +73,18 @@
     <string name="content_desc_font_size">Text size</string>
     <string name="content_desc_reader_settings">Reading settings</string>
 
+    <!-- Mushaf reader progress (PHASE-6.3) -->
+    <string name="reader_mark_page">Mark page</string>
+    <string name="reader_marked">Marked ✓</string>
+    <string name="reader_resumed">Resumed at page %1$d</string>
+    <string name="reader_page_short">Page %1$d of %2$d</string>
+
+    <!-- Continue-reading card (PHASE-6.3) -->
+    <string name="progress_continue">Continue Reading</string>
+    <string name="progress_continue_body">%1$s · Ayah %2$d of %3$d</string>
+    <string name="progress_quran_total">Whole Quran</string>
+    <string name="progress_completed">Completed</string>
+
     <!-- Qibla -->
     <string name="qibla_direction">Qibla Direction</string>
     <string name="towards_mecca">° towards Mecca</string>

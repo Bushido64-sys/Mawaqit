@@ -1,6 +1,7 @@
 package com.mawaqit.app.ui.quran
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -37,11 +39,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mawaqit.app.R
 import com.mawaqit.app.data.db.SurahEntity
+import com.mawaqit.app.data.repository.QuranProgress
 import com.mawaqit.app.ui.components.ErrorState
 import com.mawaqit.app.ui.components.LoadingState
 import com.mawaqit.app.ui.theme.ChipBg
 import com.mawaqit.app.ui.theme.ChipText
 import com.mawaqit.app.ui.theme.NotoNaskhArabicFamily
+import com.mawaqit.app.ui.theme.PrimaryBlue
+import com.mawaqit.app.ui.theme.PrimaryGold
+import com.mawaqit.app.ui.theme.SurfaceDeep
 import com.mawaqit.app.ui.theme.TextMuted
 import com.mawaqit.app.ui.theme.TextPrimary
 
@@ -56,6 +62,7 @@ fun QuranListScreen(
     viewModel: QuranListViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val progress by viewModel.quranProgress.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier
@@ -70,6 +77,11 @@ fun QuranListScreen(
             fontWeight = FontWeight.Bold,
             color = TextPrimary
         )
+        Spacer(Modifier.height(12.dp))
+
+        // PHASE-6.3 — Continue Reading card above the search bar; hidden
+        // entirely until the user has actually read something.
+        progress?.let { QuranProgressCard(progress = it, onContinueClick = onSurahClick) }
         Spacer(Modifier.height(12.dp))
 
         SearchBar(
@@ -90,6 +102,7 @@ fun QuranListScreen(
             state.surahs.isEmpty() -> EmptySearchState()
             else -> SurahList(
                 surahs = state.surahs,
+                completed = state.completedNumbers,
                 onSurahClick = onSurahClick
             )
         }
@@ -109,6 +122,7 @@ private fun SearchBar(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, PrimaryGold.copy(alpha = 0.55f), RoundedCornerShape(16.dp))
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -160,31 +174,48 @@ private fun EmptySearchState() {
     }
 }
 
-/** One Surah row: number chip (blue tint) · English + meaning · Arabic right. */
+/**
+ * One Surah row: number chip (blue tint) · English + meaning · Arabic right.
+ * PHASE-6.3 — a completed surah is highlighted in gold: tinted row, gold
+ * border + gold text on the number chip, and a "✓ Completed" tag.
+ */
 @Composable
-private fun SurahRow(surah: SurahEntity, onClick: () -> Unit) {
+private fun SurahRow(surah: SurahEntity, isCompleted: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .background(
+                if (isCompleted) PrimaryGold.copy(alpha = 0.10f)
+                else MaterialTheme.colorScheme.surface
+            )
+            .then(
+                if (isCompleted) {
+                    Modifier.border(1.dp, PrimaryGold.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
+                } else Modifier
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Number box — light blue chip fill, blue text (DESIGN.md §1 #7)
+        // Number box — blue chip; gold border + gold text when completed
         Box(
             modifier = Modifier
                 .size(40.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(ChipBg),
+                .background(ChipBg)
+                .then(
+                    if (isCompleted) {
+                        Modifier.border(1.dp, PrimaryGold, RoundedCornerShape(12.dp))
+                    } else Modifier
+                ),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = surah.number.toString(),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = ChipText
+                color = if (isCompleted) PrimaryGold else ChipText
             )
         }
         Spacer(Modifier.size(12.dp))
@@ -206,26 +237,157 @@ private fun SurahRow(surah: SurahEntity, onClick: () -> Unit) {
             )
         }
 
-        // Arabic name — RTL, right side (Rule 13)
-        Text(
-            text = surah.nameArabic,
-            fontFamily = NotoNaskhArabicFamily,
-            fontSize = 18.sp,
-            textAlign = TextAlign.End,
-            color = TextPrimary
-        )
+        // Arabic name — RTL, right side (Rule 13); "✓ Completed" tag beneath
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = surah.nameArabic,
+                fontFamily = NotoNaskhArabicFamily,
+                fontSize = 18.sp,
+                textAlign = TextAlign.End,
+                color = TextPrimary
+            )
+            if (isCompleted) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "✓ ${stringResource(R.string.progress_completed)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryGold
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun SurahList(surahs: List<SurahEntity>, onSurahClick: (Int) -> Unit) {
+private fun SurahList(
+    surahs: List<SurahEntity>,
+    completed: Set<Int>,
+    onSurahClick: (Int) -> Unit
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 16.dp)
     ) {
         items(surahs, key = { it.number }) { surah ->
-            SurahRow(surah = surah, onClick = { onSurahClick(surah.number) })
+            SurahRow(
+                surah = surah,
+                isCompleted = surah.number in completed,
+                onClick = { onSurahClick(surah.number) }
+            )
+        }
+    }
+}
+
+/**
+ * PHASE-6.3 — the Continue Reading card: deep blue with a gold border,
+ * this-surah + whole-Quran gold progress bars, and a gold "Continue"
+ * button that reopens the reader at the last-read page.
+ */
+@Composable
+private fun QuranProgressCard(
+    progress: QuranProgress,
+    onContinueClick: (Int) -> Unit
+) {
+    val surah = progress.continueSurah ?: return
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(SurfaceDeep)
+            .border(1.dp, PrimaryGold.copy(alpha = 0.75f), RoundedCornerShape(20.dp))
+            .padding(16.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.progress_continue),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = PrimaryGold
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(
+                    R.string.progress_continue_body,
+                    surah.nameEnglish,
+                    surah.furthestAyah,
+                    surah.totalAyahs
+                ),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = surah.nameArabic,
+                fontFamily = NotoNaskhArabicFamily,
+                fontSize = 18.sp,
+                textAlign = TextAlign.End,
+                color = Color.White
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        ProgressBar(label = surah.nameEnglish, percent = surah.percent)
+        Spacer(Modifier.height(10.dp))
+        ProgressBar(
+            label = stringResource(R.string.progress_quran_total),
+            percent = progress.percent
+        )
+        Spacer(Modifier.height(14.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(50))
+                .background(PrimaryGold.copy(alpha = 0.18f))
+                .border(1.dp, PrimaryBlue, RoundedCornerShape(50))
+                .clickable { onContinueClick(surah.surahNumber) }
+                .padding(vertical = 12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = stringResource(R.string.progress_continue),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        }
+    }
+}
+
+/** Thin gold progress bar: dark track, gold fill, % label row above. */
+@Composable
+private fun ProgressBar(label: String, percent: Int) {
+    Column {
+        Row {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.7f),
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "$percent%",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryGold
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(50))
+                .background(Color.White.copy(alpha = 0.15f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(percent / 100f)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(PrimaryGold)
+            )
         }
     }
 }

@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Room
 import com.mawaqit.app.data.db.AyahDao
 import com.mawaqit.app.data.db.MawaqitDatabase
+import com.mawaqit.app.data.db.MawaqitDatabase.Companion.MIGRATION_1_2
+import com.mawaqit.app.data.db.ReadingProgressDao
 import com.mawaqit.app.data.db.PrayerTimeDao
 import com.mawaqit.app.data.db.SalahLogDao
 import com.mawaqit.app.data.db.SurahDao
@@ -26,6 +28,7 @@ object AppModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): MawaqitDatabase =
         Room.databaseBuilder(context, MawaqitDatabase::class.java, MawaqitDatabase.DATABASE_NAME)
+            .addMigrations(MIGRATION_1_2)
             .fallbackToDestructiveMigration()
             .build()
 
@@ -36,4 +39,7 @@ object AppModule {
     @Provides fun provideSurahDao(db: MawaqitDatabase): SurahDao = db.surahDao()
 
     @Provides fun provideAyahDao(db: MawaqitDatabase): AyahDao = db.ayahDao()
+
+    @Provides fun provideReadingProgressDao(db: MawaqitDatabase): ReadingProgressDao =
+        db.readingProgressDao()
 }

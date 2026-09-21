@@ -1,5 +1,6 @@
 package com.mawaqit.app.ui.quran
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -54,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -75,6 +77,7 @@ import com.mawaqit.app.ui.components.VideoBackground
 import com.mawaqit.app.ui.theme.AmiriFontFamily
 import com.mawaqit.app.ui.theme.InterFontFamily
 import com.mawaqit.app.ui.theme.NotoNaskhArabicFamily
+import com.mawaqit.app.ui.theme.PrimaryBlue
 import com.mawaqit.app.ui.theme.PrimaryGold
 import com.mawaqit.app.util.QuranText
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -92,6 +95,12 @@ import kotlinx.coroutines.flow.distinctUntilChanged
  *    the same saved preferences.
  * 3. Page dots are a sliding window of 7 centered on the active dot, plus an
  *    explicit "Page X of Y · Verses a–b" line — infinite surahs can't lose you.
+ *
+ * PHASE-6.3 "Keep My Place":
+ * 4. Reopening a started surah jumps straight to the last-read page (pinned
+ *    bookmark wins) with a small "Resumed at page N" toast.
+ * 5. A settled page counts as read (auto-progress); the gold footer strip
+ *    pins/unpins the bookmark ("Mark page" ⇄ "Marked ✓").
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -122,7 +131,10 @@ fun SurahDetailScreen(
                 )
                 else -> MushafPager(
                     state = state,
-                    onFirstSwipe = viewModel::onFirstSwipe
+                    onFirstSwipe = viewModel::onFirstSwipe,
+                    onPageSettled = viewModel::onPageSettled,
+                    onBookmarkClick = viewModel::markPage,
+                    onConsumeResume = viewModel::consumeResumeToast
                 )
             }
         }
@@ -189,24 +201,30 @@ private fun TopBar(
     }
 }
 
-/** Pager of fitted mushaf pages + first-visit swipe hint. */
+/** Pager of fitted mushaf pages + first-visit swipe hint + resume/bookmark logic. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MushafPager(
     state: SurahDetailUiState,
-    onFirstSwipe: () -> Unit
+    onFirstSwipe: () -> Unit,
+    onPageSettled: (Int, Int) -> Unit,
+    onBookmarkClick: (Int) -> Unit,
+    onConsumeResume: () -> Unit
 ) {
     val bismillah = stringResource(R.string.bismillah)
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
+    val context = LocalContext.current
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         // PHASE-6.2 fix #1 — measure-then-pack: pages fit THIS screen exactly,
         // re-fitted whenever font size / translation mode / content changes.
+        // PHASE-6.3 — the mark-page strip is part of every page's chrome.
+        val footerExtraPx = with(density) { FitPages.MUSHAF_FOOTER_H.roundToPx() }
         val fittedPages = remember(
             state.ayahs, state.surah, state.displayMode, state.fontScale,
             state.bismillahPre, bismillah, measurer, density,
-            constraints.maxWidth, constraints.maxHeight
+            constraints.maxWidth, constraints.maxHeight, footerExtraPx
         ) {
             FitPages.fit(
                 ayahs = state.ayahs,
@@ -218,16 +236,46 @@ private fun MushafPager(
                 measurer = measurer,
                 density = density,
                 maxWidthPx = constraints.maxWidth,
-                maxHeightPx = constraints.maxHeight
+                maxHeightPx = constraints.maxHeight,
+                footerExtraHeight = footerExtraPx
             )
         }
         val pagerState = rememberPagerState(pageCount = { fittedPages.size })
+
+        // PHASE-6.3 — resume: jump straight to the stored page (bookmark or
+        // last read) once pages exist; toast once, then retire the target.
+        LaunchedEffect(fittedPages.size, state.resumeAyah) {
+            val target = state.resumeAyah ?: return@LaunchedEffect
+            if (fittedPages.isEmpty()) return@LaunchedEffect
+            val page = fittedPages.indexOfFirst { it.ayahs.firstOrNull()?.ayahNumber == target }
+            if (page >= 0) {
+                pagerState.scrollToPage(page)
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.reader_resumed, page + 1),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            onConsumeResume()
+        }
 
         // Any horizontal drag → the swipe hint retires forever (ViewModel guards).
         LaunchedEffect(pagerState) {
             snapshotFlow { pagerState.currentPageOffsetFraction }
                 .distinctUntilChanged()
                 .collect { fraction -> if (fraction != 0f) onFirstSwipe() }
+        }
+
+        // PHASE-6.3 — a settled page is a read page: record lastAyah (first
+        // ayah of the page, the resume target) + furthestAyah (running max).
+        LaunchedEffect(pagerState, fittedPages.size) {
+            snapshotFlow { pagerState.currentPage }
+                .collect { page ->
+                    val ayahs = fittedPages.getOrNull(page)?.ayahs ?: return@collect
+                    val first = ayahs.firstOrNull()?.ayahNumber ?: return@collect
+                    val last = ayahs.lastOrNull()?.ayahNumber ?: first
+                    onPageSettled(first, last)
+                }
         }
 
         Box(modifier = Modifier.fillMaxSize()) {
@@ -243,7 +291,9 @@ private fun MushafPager(
                     pageCount = fittedPages.size,
                     mode = state.displayMode,
                     fontScale = state.fontScale.multiplier,
-                    showBismillah = page == 0 && state.bismillahPre
+                    showBismillah = page == 0 && state.bismillahPre,
+                    bookmarkAyah = state.bookmarkAyah,
+                    onBookmarkClick = onBookmarkClick
                 )
             }
 
@@ -270,8 +320,9 @@ private fun MushafPager(
 
 /**
  * One mushaf card: gold-framed deep-navy block, header inside, ayahs
- * center-staged, footer with explicit page position + sliding-window dots.
- * The ayah column scrolls ONLY when FitPages flagged the page oversized.
+ * center-staged, footer with explicit page position + sliding-window dots,
+ * then the PHASE-6.3 mark-page strip. The ayah column scrolls ONLY when
+ * FitPages flagged the page oversized.
  */
 @Composable
 private fun MushafPage(
@@ -281,7 +332,9 @@ private fun MushafPage(
     pageCount: Int,
     mode: DisplayMode,
     fontScale: Float,
-    showBismillah: Boolean
+    showBismillah: Boolean,
+    bookmarkAyah: Int,
+    onBookmarkClick: (Int) -> Unit
 ) {
     val pageAyahs = page.ayahs
     Column(
@@ -360,7 +413,7 @@ private fun MushafPage(
                 }
             }
 
-            // ── Footer: "Page X of Y · Verses a–b" + sliding-window dots ──
+            // ── Footer: position line + sliding-window dots + mark strip ──
             if (pageAyahs.isNotEmpty()) {
                 val verses = if (pageCount > 1) {
                     stringResource(
@@ -383,16 +436,76 @@ private fun MushafPage(
                         .fillMaxWidth()
                         .padding(top = 8.dp)
                 )
-            }
-            if (pageCount > 1) {
+                if (pageCount > 1) {
+                    Spacer(Modifier.height(10.dp))
+                    WindowedPageDots(
+                        pageCount = pageCount,
+                        pageIndex = pageIndex,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
                 Spacer(Modifier.height(10.dp))
-                WindowedPageDots(
-                    pageCount = pageCount,
-                    pageIndex = pageIndex,
-                    modifier = Modifier.fillMaxWidth()
-                )
+
+                // PHASE-6.3 — the mark-page strip (fixed height; FitPages
+                // reserves exactly FitPages.MUSHAF_FOOTER_H for it).
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(FitPages.MUSHAF_FOOTER_H),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    MarkPageButton(
+                        bookmarkAyah = bookmarkAyah,
+                        pageFirstAyah = pageAyahs.first().ayahNumber,
+                        onClick = onBookmarkClick
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        text = stringResource(R.string.reader_page_short, pageIndex + 1, pageCount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.5f)
+                    )
+                }
             }
         }
+    }
+}
+
+/**
+ * PHASE-6.3 — gold-shaded pill with a blue border (user spec): tap to pin
+ * this page as the bookmark; fills solid gold with "Marked ✓" while pinned.
+ */
+@Composable
+private fun MarkPageButton(
+    bookmarkAyah: Int,
+    pageFirstAyah: Int,
+    onClick: (Int) -> Unit
+) {
+    val isMarked = bookmarkAyah == pageFirstAyah
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (isMarked) PrimaryGold else PrimaryGold.copy(alpha = 0.18f))
+            .border(1.dp, PrimaryBlue, RoundedCornerShape(50))
+            .clickable { onClick(pageFirstAyah) }
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.MenuBook,
+            contentDescription = null,
+            tint = if (isMarked) Color(0xFF071E35) else Color.White,
+            modifier = Modifier.size(14.dp)
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = stringResource(
+                if (isMarked) R.string.reader_marked else R.string.reader_mark_page
+            ),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = if (isMarked) Color(0xFF071E35) else Color.White
+        )
     }
 }
 

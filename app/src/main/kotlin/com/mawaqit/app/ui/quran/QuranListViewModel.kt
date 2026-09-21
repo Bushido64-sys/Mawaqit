@@ -4,11 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mawaqit.app.data.db.SurahEntity
 import com.mawaqit.app.data.repository.QuranRepository
+import com.mawaqit.app.data.repository.QuranProgress
+import com.mawaqit.app.data.repository.ReadingProgressRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
@@ -20,7 +23,8 @@ data class QuranListUiState(
     val isLoading: Boolean = true,
     val searchQuery: String = "",
     val isSearchActive: Boolean = false,
-    val error: Boolean = false
+    val error: Boolean = false,
+    val completedNumbers: Set<Int> = emptySet() // PHASE-6.3 gold-highlighted rows
 )
 
 /**
@@ -31,7 +35,8 @@ data class QuranListUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class QuranListViewModel @Inject constructor(
-    private val repo: QuranRepository
+    private val repo: QuranRepository,
+    private val progress: ReadingProgressRepository
 ) : ViewModel() {
 
     private val query = MutableStateFlow("")
@@ -39,7 +44,7 @@ class QuranListViewModel @Inject constructor(
     private val listReady = MutableStateFlow(false) // ensureSurahListLoaded() finished
     private val loadFailed = MutableStateFlow(false)
 
-    val uiState: StateFlow<QuranListUiState> = combine(
+    private val listState = combine(
         query.flatMapLatest { q ->
             if (q.isBlank()) repo.getAllSurahs() else repo.searchSurahs(q.trim())
         },
@@ -53,10 +58,24 @@ class QuranListViewModel @Inject constructor(
             isSearchActive = active,
             error = failed && surahs.isEmpty()
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), QuranListUiState())
+    }
+
+    /** List state joined with reading progress (gold achievement rows). */
+    val uiState: StateFlow<QuranListUiState> =
+        combine(listState, progress.getAll()) { state, rows ->
+            state.copy(
+                completedNumbers = rows.filter { it.completed }
+                    .map { it.surahNumber }.toSet()
+            )
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), QuranListUiState())
+
+    /** PHASE-6.3 continue card: Quran-wide progress, live-updating. */
+    private val _quranProgress = MutableStateFlow<QuranProgress?>(null)
+    val quranProgress: StateFlow<QuranProgress?> = _quranProgress.asStateFlow()
 
     init {
         refresh()
+        loadProgress()
     }
 
     /** Bootstrap the 114-surah list (no-op when DB already has it). */
@@ -64,6 +83,15 @@ class QuranListViewModel @Inject constructor(
         viewModelScope.launch {
             loadFailed.value = !repo.ensureSurahListLoaded()
             listReady.value = true
+        }
+    }
+
+    /** Every progress write (auto page turns + bookmarks) recomputes the card. */
+    private fun loadProgress() {
+        viewModelScope.launch {
+            progress.getAll().collect {
+                _quranProgress.value = progress.getQuranProgress()
+            }
         }
     }
 
