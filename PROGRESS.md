@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-21 — [PHASE-6.2] user-PASSED ("looks better than before, good job!") → [PHASE-6.3] "Keep My Place" BUILT & PUSHED (b95e5d7, 10 files, +659/−50) — AWAITING user test (checklist below). APK: GitHub Actions auto-build on every push.**
+> **Last updated: 2026-09-21 — [PHASE-6.2] user-PASSED ("looks better than before, good job!") → [PHASE-6.3] "Keep My Place" BUILT, PUSHED & BUILD-GREEN (b95e5d7 + DI fix 645e9d0, 11 files total) — AWAITING user test (checklist below). APK: GitHub Actions auto-build on every push.**
 
 ---
 
@@ -58,6 +58,10 @@ reopens at page 1 (clean restart, bookmark also cleared only if never re-pinned)
   QuranListScreen; continue card hidden while continueSurah == null.
 - 6.2 build fix for the record: BOM 2024.06 has rememberTextMeasurer(),
   NOT LocalTextMeasurer (ad48e7d). Check new API names against our BOM first.
+- 6.3 build fix for the record: a NEW repository interface is useless without
+  a @Binds entry in RepositoryModule (Dagger MissingBinding, 645e9d0) — same
+  family of lesson as Phase 6's name-tagged Retrofit clients: every new
+  injectable needs its wiring line, not just its implementation.
 
 **PHASE-6 implementation facts (for future sessions):**
 - UmmahAPI 2nd Retrofit in NetworkModule (base https://ummahapi.com/api/).
