@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-21 — [PHASE-6.1] user-tested: improvement confirmed ("good job") but 3 refinements requested → [PHASE-6.2] "The Perfect Page" BUILT & PUSHED (4c31b58, 5 files, +503/−198) — AWAITING user test (checklist below). APK: GitHub Actions auto-build on every push.**
+> **Last updated: 2026-09-21 — [PHASE-6.2] user-PASSED ("looks better than before, good job!") → [PHASE-6.3] "Keep My Place" BUILT & PUSHED (b95e5d7, 10 files, +659/−50) — AWAITING user test (checklist below). APK: GitHub Actions auto-build on every push.**
 
 ---
 
@@ -18,29 +18,46 @@ from a detailed guidebook (`mawaqit-guidebook/`), with the user learning as we g
 [PHASE-5.2] on device — "the widget looks better than before" — fonts +
 responsive layouts + 5s popup all verified.
 
-**NOW: Phase 6.1 reader user-tested — design approved, 3 flaws reported: (1) pages
-don't fill the screen / inner scroll exists, (2) translation toggle shouldn't be
-on the page, (3) page dots overflow on long surahs → active dot falls off.
-Response: [PHASE-6.2] "The Perfect Page" (4c31b58). AWAITING user test → then
-Phase 7 (plan-only until user says BUILD — Rule 6). Open the next session by
-asking for these results BEFORE any new work:
+**[PHASE-6.2] PASSED (user: "looks better than before, good job!"). NOW:
+[PHASE-6.3] "Keep My Place" built (b95e5d7) — AWAITING user test. Open the
+next session by asking for THESE results BEFORE any new work:
 | # | Test | Expect |
 |---|------|--------|
-| 1 | Open any surah (e.g. 2) | Card is FILLED edge-to-edge with content sized to YOUR screen — ZERO scrolling inside the card (swiping is the only way) |
-| 2 | Swipe | Next page-card slides in, also full; no leftover empty half-pages |
-| 3 | Top bar | ☰ chip (top right); page itself has NO toggle, NO Aa chip |
-| 4 | Tap ☰ | "Reading Settings" sheet: translation toggle (sliding gold) + S/M/L/XL + live preview — BOTH controls in ONE sheet |
-| 5 | Pick XL → close → reopen | Size remembered AND pages now hold FEWER verses (re-fit proof) |
-| 6 | Al-Baqarah → swipe deep (page 20+) | Gold active dot ALWAYS visible (sliding 7-dot window) + footer "Page X of Y · Verses a–b" |
-| 7 | Al-Fatihah | NO Bismillah (unchanged regression) |
-| 8 | Airplane mode → reopen surah 2 | Loads instantly (offline-first intact) |
-| 9 | Regression: alarms/widget/home | Azan + widget + Ayah of the Day unaffected |
-Known safe caveats to tell the user: reading background is a GRADIENT by
-design until they deliver splash_video.mp4 (assignment/06) — then the video
-switches on by itself (VideoBackground probes by name, zero code change).
-First-ever surah open needs internet; every later open is offline.
-Safety valve: a single ayah taller than a whole page (Ayat al-Kursi at XL)
-gets its own internally-scrollable page — deliberate, not a bug.
+| 1 | Open a surah you previously read | Jumps straight to your last page + "Resumed at page N" toast |
+| 2 | Open a fresh surah | Starts at page 1 (no toast) |
+| 3 | Any page footer | Gold "Mark page" pill with BLUE border next to "Page X of Y" |
+| 4 | Tap "Mark page" → close → reopen | Pill filled gold "Marked ✓"; you land on the MARKED page (bookmark beats last-read) |
+| 5 | Tap the marked pill again | Unpins (back to "Mark page") |
+| 6 | Quran tab after reading | "Continue Reading" card (blue, gold border): surah + "Ayah X of Y", TWO gold bars (this surah % / Whole Quran %), Continue button reopens the reader |
+| 7 | Swipe to a surah's LAST page → back to list | That row gold-highlighted, number chip gold-bordered, "✓ Completed" tag |
+| 8 | Change font to XL | Pages re-fit; progress % UNCHANGED (stored in ayahs, not pages) |
+| 9 | Al-Fatihah / airplane mode | NO Bismillah; cached surahs open instantly (regressions) |
+| 10 | Azan / widget / home | Untouched (regression) |
+Known safe caveats: the continue card appears only AFTER the first read
+(opening a surah counts page 1 as read — by design); a COMPLETED surah
+reopens at page 1 (clean restart, bookmark also cleared only if never re-pinned);
+6.2's gradient background + safety-valve scroll page still apply.
+
+**PHASE-6.3 implementation facts (b95e5d7, 2026-09-21):**
+- reading_progress table (Room v2): surahNumber PK, lastAyah (resume target =
+  first ayah of last page), furthestAyah (running max → completion %), lastReadAt,
+  completed/completedAt, bookmarkAyah (0 = none). MIGRATION_1_2 additive
+  (CREATE TABLE only) — prayer logs + cached surahs survive.
+- Progress stored in AYAH numbers (font-size independent); reader maps
+  ayah → page via fittedPages.indexOfFirst after each re-fit.
+- Resume priority: bookmark > lastAyah > none; completed surahs → null (page 1).
+- Opening a surah records page-1 progress (creates row, refreshes lastReadAt);
+  pager settle records lastAyah=first-of-page, furthest=last-of-page.
+- FitPages.fit gained footerExtraHeight param; MushafPage renders the
+  mark-page strip at FitPages.MUSHAF_FOOTER_H (64dp) — constants stay in sync.
+- ReadingProgressRepository: QuranProgress (continueSurah = newest
+  not-completed row, whole-Quran % = Σ min(furthest, total) / Σ total).
+- ListViewModel: uiState = listState combine progress.getAll() →
+  completedNumbers set; quranProgress StateFlow recomputed on every progress write.
+- SURAH row gold treatment + QuranProgressCard + gold search border in
+  QuranListScreen; continue card hidden while continueSurah == null.
+- 6.2 build fix for the record: BOM 2024.06 has rememberTextMeasurer(),
+  NOT LocalTextMeasurer (ad48e7d). Check new API names against our BOM first.
 
 **PHASE-6 implementation facts (for future sessions):**
 - UmmahAPI 2nd Retrofit in NetworkModule (base https://ummahapi.com/api/).
