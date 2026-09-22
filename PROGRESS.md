@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-21 — [PHASE-6.4] user-PASSED ("Good fucking job") → [PHASE-6.5] "Locked Pages" BUILT, PUSHED & BUILD-GREEN first-try (c278e81, 4 files, +243/−152) — AWAITING user test (checklist below). APK: GitHub Actions auto-build on every push.**
+> **Last updated: 2026-09-22 — [PHASE-6.5] user-TESTED (passed, 1 bug found) → [PHASE-4.5] "Prayer Calendar" + dim-fix BUILT, PUSHED & BUILD-GREEN verified (34a960d) — AWAITING user test (checklist below). APK: GitHub Actions auto-build on every push.**
 
 ---
 
@@ -18,23 +18,51 @@ from a detailed guidebook (`mawaqit-guidebook/`), with the user learning as we g
 [PHASE-5.2] on device — "the widget looks better than before" — fonts +
 responsive layouts + 5s popup all verified.
 
-**[PHASE-6.4] PASSED (user: "Good fucking job"). NOW: [PHASE-6.5] "Locked
-Pages" built (c278e81) — AWAITING user test. Open the next session by asking
-for THESE results BEFORE any new work:
+**[PHASE-6.5] user-TESTED → PASSED (one bug found: dim-desync, fixed in 4.5).
+NOW: [PHASE-4.5] "Prayer Calendar" + dim-fix built (34a960d, build GREEN
+verified via API) — AWAITING user test. Open the next session by asking for
+THESE results BEFORE any new work:
 | # | Test | Expect |
 |---|------|--------|
-| 1 | Fresh-install reader, or any surah while an earlier one is unfinished | Locked pages' "Mark as read" pill DIMMED (~40%); only the next unread page of the unlocked surah is active |
-| 2 | Tap a dimmed pill on a LATER page, same surah | Modal "Page locked" popup (navy + gold + Got it): "Mark the previous page as read first — pages unlock in order." |
-| 3 | Tap a pill in a surah while an earlier surah is unfinished | Popup names the REAL blocker: "X isn't finished yet. The Quran is read in order — finish it, and this surah unlocks." |
-| 4 | Mark pages IN ORDER (page 1 → 2 → … to surah end) | Each mark lights the next pill instantly; finishing a surah unlocks the next surah (its first page active) |
-| 5 | Re-tap any "Read ✓" page | ALWAYS works, no popup — silently re-pins the resume point |
-| 6 | ☰ sheet on a gesture-nav phone | Toggle + size pills + font preview all sit ABOVE the system nav buttons — nothing overlaid |
-| 7 | First-ever reader open | ONE coach only: "One tap saves your place" — NO swipe lesson, NO arrow animation |
-| 8 | Regression sweep | Swiping still records nothing; browsing doesn't move the Continue card; resume toast works; Al-Fatihah has no Bismillah; azan/widget/home untouched |
-Known safe caveats: legacy PHASE-6.3 bookmarkAyah column still wins resume
-priority (harmless); progress rows created by the pre-6.5 auto-marking era are
-respected as-is — the user marked 1→5 in order, so the chain stays consistent
-on their device; 6.2's gradient background + safety-valve scroll still apply.
+| 1 | Quran: re-tap an OLD "Read ✓" page, then view the next unread page | Next page's pill is NOT dimmed anymore (desync fix); marking still works |
+| 2 | Locked pages (regression) | Locked pills still dimmed; both lock popups still fire on locked taps |
+| 3 | Home: gold-border calendar chip on the "Today's prayers" row | Opens a bottom-sheet calendar on today's month; today ringed gold + pre-selected |
+| 4 | Calendar grid | Gold dot under every day with ≥1 prayed prayer (incl. notification "Mark as Prayed" days); ‹ › pages months |
+| 5 | Tap any date | Detail lists all 5 prayers — green ✓ = prayed, dim = not marked |
+| 6 | History forever | Old 30-day auto-delete is GONE — logs persist (verify: marks stay visible across weeks) |
+| 7 | Regression sweep | Prayer checkmarks, alarm switches, azan, widget, Quran progress: all untouched |
+Known caveats: days already wiped by the OLD cleanup are unrecoverable; sheet
+labels follow the phone locale; calendar is read-only (no editing past days).
+
+**PHASE-4.5 "Prayer Calendar" facts (34a960d, 2026-09-22 — 9 files, +358/−20,
+build GREEN on 2nd run; first run failed on 2 self-inflicted misses — see
+lesson below):**
+- salah_log history now FOREVER: 30-day auto-cleanup retired at ALL 3 levels
+  (HomeViewModel init call, SalahRepository.cleanupOldEntries,
+  SalahLogDao.deleteOlderThan — all deleted, zero callers remain).
+- NEW SalahLogDao.getSalahLogBetween(startIso, endIso) — inclusive ISO range
+  read (BETWEEN; lexicographic == chronological). Passed through repository.
+- HomeViewModel calendar state: calendarMonth (YearMonth), calendarSelectedDate
+  (ISO), calendarDaysWithPrayers (Set<ISO> with ≥1 prayed), calendarDetail
+  (prayer→prayed). Functions: openCalendar(), changeCalendarMonth(±1),
+  selectCalendarDate(iso). refreshCalendarDetail is SUSPEND — call it ONLY
+  inside viewModelScope.
+- HomeScreen: CalendarChip (36dp circle, gold border, Event icon) on the
+  "Today's prayers" row; PrayerCalendarSheet = ModalBottomSheet, Mon-first
+  locale-aware grid (leading blanks align day 1), gold dot per prayed day,
+  gold ring on today, tapped-day detail with SuccessGreen checks.
+- SurahDetailViewModel dim-desync FIX: markPage() derives nextUnlockAyah from
+  the NEW furthestAyah (max of old, pageLastAyah) — re-pinning an old page can
+  no longer rewind the unlock pointer. Fresh-surah default stays =1.
+- NEW BUILD LESSON: importing Icons.Filled.X (vectors) is NOT the same as
+  importing androidx.compose.material3.Icon (composable) — forgetting the
+  latter fails with "Unresolved reference: Icon" at USE sites. Also: suspend
+  functions called from non-suspend VM functions need viewModelScope.launch.
+  Pre-push self-check: grep every newly used composable symbol in the file's
+  import block.
+- Build-check trick (reconfirmed): curl api.github.com works even when the
+  sandbox's DNS dies; wait ~5.5 min, read check-runs + annotations for exact
+  compiler lines.
 
 **PHASE-6.3 implementation facts (b95e5d7, 2026-09-21):**
 - reading_progress table (Room v2): surahNumber PK, lastAyah (resume target =
