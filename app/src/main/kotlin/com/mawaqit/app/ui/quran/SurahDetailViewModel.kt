@@ -54,9 +54,6 @@ data class SurahDetailUiState(
     // the "Mark as read" ⇄ "Read ✓" button state per page.
     val furthestAyah: Int = 0,
     val totalAyahs: Int = 0,
-    // PHASE-6.5 — pages unlock in order: the first ayah of the next unread
-    // page (the only page whose button is active). 0 = nothing locked yet.
-    val nextUnlockAyah: Int = 0,
     // PHASE-6.5 — the surah that must be finished first (null = this surah is
     // unlocked). A fresh reader is locked to every surah except Al-Fatihah.
     val blockerSurahName: String? = null,
@@ -122,7 +119,6 @@ class SurahDetailViewModel @Inject constructor(
                     resumeAyah = resumeAyah,
                     furthestAyah = row?.furthestAyah ?: 0,
                     totalAyahs = detail.ayahs.size,
-                    nextUnlockAyah = row?.furthestAyah?.plus(1)?.takeIf { it <= detail.ayahs.size } ?: 1,
                     blockerSurahName = blocker?.nameEnglish,
                     coachVisible = !coachDone && detail.ayahs.isNotEmpty()
                 )
@@ -171,15 +167,16 @@ class SurahDetailViewModel @Inject constructor(
             }
         }
 
-        // PHASE-6.5 fix — the unlock pointer is ALWAYS derived from furthest:
-        // re-pinning an earlier read page must never rewind it (the bug that
-        // dimmed legitimately-earned pages while their taps still worked).
+        // PHASE-6.6 hotfix — ONE clock. The screen derives button brightness
+        // from this SAME furthestAyah using the SAME formula as the gate
+        // below, so "how it looks" and "what a tap does" can never disagree
+        // again (the separate nextUnlockAyah counter was the two-clock desync
+        // that dimmed legitimately-earned pages).
         val coachWasActive = state.coachVisible
         val newFurthest = maxOf(state.furthestAyah, pageLastAyah)
         _uiState.update {
             it.copy(
                 furthestAyah = newFurthest,
-                nextUnlockAyah = (newFurthest + 1).takeIf { next -> next <= total } ?: 0,
                 lockReason = null,
                 coachVisible = false
             )

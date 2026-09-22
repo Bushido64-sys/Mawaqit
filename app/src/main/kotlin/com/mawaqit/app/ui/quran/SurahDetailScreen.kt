@@ -273,7 +273,6 @@ private fun MushafPager(
                     fontScale = state.fontScale.multiplier,
                     showBismillah = page == 0 && state.bismillahPre,
                     furthestAyah = state.furthestAyah,
-                    nextUnlockAyah = state.nextUnlockAyah,
                     blockerSurahName = state.blockerSurahName,
                     onMarkClick = onMarkClick
                 )
@@ -453,7 +452,6 @@ private fun MushafPage(
     fontScale: Float,
     showBismillah: Boolean,
     furthestAyah: Int,
-    nextUnlockAyah: Int,
     blockerSurahName: String?,
     onMarkClick: (Int, Int) -> Unit
 ) {
@@ -573,9 +571,17 @@ private fun MushafPage(
                 // the explanatory pop-up instead of marking.
                 val firstAyahOnPage = pageAyahs.first().ayahNumber
                 val lastAyahOnPage = pageAyahs.last().ayahNumber
+                // PHASE-6.6 hotfix — brightness IS the gate: this is EXACTLY
+                // the ViewModel's permission formula on the SAME counter
+                // (furthestAyah), so a page can never render dimmed while its
+                // tap sails through (the old two-clock desync). Read pages
+                // stay gold, the frontier page is visibly LIT, everything
+                // else is locked-dimmed.
                 val isRead = furthestAyah >= lastAyahOnPage
-                val isLocked = !isRead &&
-                    (blockerSurahName != null || firstAyahOnPage > nextUnlockAyah)
+                val isUnlocked = blockerSurahName == null &&
+                    firstAyahOnPage <= furthestAyah + 1
+                val isFrontier = !isRead && isUnlocked
+                val isLocked = !isRead && !isUnlocked
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -584,6 +590,7 @@ private fun MushafPage(
                 ) {
                     MarkAsReadButton(
                         isRead = isRead,
+                        isFrontier = isFrontier,
                         isLocked = isLocked,
                         onClick = { onMarkClick(firstAyahOnPage, lastAyahOnPage) }
                     )
@@ -600,15 +607,18 @@ private fun MushafPage(
 }
 
 /**
- * PHASE-6.4/6.5 — the one button that counts. Unread page → gold-shaded pill
- * with a blue border, "Mark as read". Page read → solid gold, "Read ✓"
- * (tapping again simply re-pins the resume point to this page). A locked
- * page's pill is dimmed to 40% — the lock is visible before the tap, and
- * the tap answers with the lock pop-up instead of recording progress.
+ * PHASE-6.4/6.6 — the one button that counts, three visual states:
+ * - READ page → solid gold, "Read ✓" (tapping again re-pins the resume spot).
+ * - FRONTIER page (the next one to mark) → LIT: brighter gold fill + gold
+ *   border — unmistakably the active button, never mistaken for "greyed out".
+ * - LOCKED page → the dimmed 40% pill; its tap answers with the lock pop-up
+ *   instead of recording progress.
+ * Brightness shares ONE formula + counter with the ViewModel's gate (6.6).
  */
 @Composable
 private fun MarkAsReadButton(
     isRead: Boolean,
+    isFrontier: Boolean,
     isLocked: Boolean,
     onClick: () -> Unit
 ) {
@@ -616,8 +626,18 @@ private fun MarkAsReadButton(
         modifier = Modifier
             .alpha(if (isLocked) 0.4f else 1f)
             .clip(RoundedCornerShape(50))
-            .background(if (isRead) PrimaryGold else PrimaryGold.copy(alpha = 0.18f))
-            .border(1.dp, PrimaryBlue, RoundedCornerShape(50))
+            .background(
+                when {
+                    isRead -> PrimaryGold
+                    isFrontier -> PrimaryGold.copy(alpha = 0.42f)
+                    else -> PrimaryGold.copy(alpha = 0.18f)
+                }
+            )
+            .border(
+                width = if (isFrontier) 1.5.dp else 1.dp,
+                color = if (isFrontier) PrimaryGold else PrimaryBlue,
+                shape = RoundedCornerShape(50)
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically

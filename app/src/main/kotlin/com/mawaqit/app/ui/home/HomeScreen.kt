@@ -450,7 +450,11 @@ private fun PrayerCalendarSheet(
         }
         Spacer(Modifier.height(4.dp))
 
-        // ── Day grid (leading blanks align day 1 to its weekday) ──
+        // ── Day grid ──
+        // Leading blanks align day 1 to its weekday; trailing blanks pad the
+        // last row. BOTH bounds are guarded — an unguarded upper bound called
+        // atDay() past the month end (e.g. Sep 2026: Tue start, 30 days) and
+        // crashed the sheet on open (PHASE-4.5 hotfix).
         val firstOffset = month.atDay(1).dayOfWeek.value - 1 // Mon=1 → 0 blanks
         val daysInMonth = month.lengthOfMonth()
         val rowCount = (firstOffset + daysInMonth + 6) / 7
@@ -458,7 +462,7 @@ private fun PrayerCalendarSheet(
             Row(modifier = Modifier.fillMaxWidth()) {
                 repeat(7) { col ->
                     val cell = rowIndex * 7 + col
-                    if (cell < firstOffset) {
+                    if (cell < firstOffset || cell >= firstOffset + daysInMonth) {
                         Spacer(Modifier.weight(1f))
                     } else {
                         val date = month.atDay(cell - firstOffset + 1)
