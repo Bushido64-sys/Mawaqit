@@ -307,7 +307,7 @@ class HomeViewModel @Inject constructor(
     /** User tapped a day — reload its prayed/not-prayed detail. */
     fun selectCalendarDate(iso: String) {
         _state.update { it.copy(calendarSelectedDate = iso) }
-        refreshCalendarDetail()
+        viewModelScope.launch { refreshCalendarDetail() }
     }
 
     /** One read-only query per month: which ISO days have ≥1 prayed prayer. */
