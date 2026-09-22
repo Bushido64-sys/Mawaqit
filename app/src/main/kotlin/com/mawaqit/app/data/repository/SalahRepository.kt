@@ -12,8 +12,8 @@ import kotlinx.coroutines.flow.Flow
 interface SalahRepository {
     fun getSalahLogForDate(dateIso: String): Flow<List<SalahLogEntity>>
     suspend fun markPrayed(prayer: PrayerName, prayed: Boolean)
-    /** Keep only the last 30 days (DATA_SCHEMA.md). ISO dates make this safe. */
-    suspend fun cleanupOldEntries()
+    /** Inclusive date-range read — PHASE-4.5 prayer calendar. */
+    suspend fun getSalahLogBetween(startDateIso: String, endDateIso: String): List<SalahLogEntity>
 }
 
 @Singleton
@@ -35,7 +35,6 @@ class SalahRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun cleanupOldEntries() {
-        dao.deleteOlderThan(LocalDate.now().minusDays(30).toString())
-    }
+    override suspend fun getSalahLogBetween(startDateIso: String, endDateIso: String): List<SalahLogEntity> =
+        dao.getSalahLogBetween(startDateIso, endDateIso)
 }

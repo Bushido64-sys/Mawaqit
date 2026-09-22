@@ -55,7 +55,12 @@ data class HomeUiState(
     val dailyAyah: DailyAyah? = null,
     val widgetAdded: Boolean = false,     // ≥1 Mawaqit widget hosted (PHASE-5.1)
     val showWidgetPromo: Boolean = false, // promo card visible (never once dismissed/added)
-    val nowMillis: Long = System.currentTimeMillis()       // 1s ticker for countdown
+    val nowMillis: Long = System.currentTimeMillis(),      // 1s ticker for countdown
+    // PHASE-4.5 prayer calendar — month = "2026-09", selected = ISO day.
+    val calendarMonth: java.time.YearMonth = java.time.YearMonth.now(),
+    val calendarSelectedDate: String? = null,
+    val calendarDaysWithPrayers: Set<String> = emptySet(), // ISO days with ≥1 prayed
+    val calendarDetail: Map<String, Boolean> = emptyMap()  // prayer → prayed for selected date
 )
 
 @HiltViewModel
@@ -92,7 +97,8 @@ class HomeViewModel @Inject constructor(
         observeWidgetPromo()
         loadDailyAyah()
         startTicker()
-        viewModelScope.launch { salahRepository.cleanupOldEntries() } // keep 30 days
+        // PHASE-4.5 — the 30-day auto-cleanup is retired: the prayer calendar
+        // keeps salah_log history forever (user decision).
     }
 
     // ── countdown ticker + midnight rollover ────────────────────────────────
@@ -276,6 +282,60 @@ class HomeViewModel @Inject constructor(
             prefs.setWidgetPromoDismissed(true)
             _state.update { it.copy(showWidgetPromo = false) }
         }
+    }
+
+    // ── PHASE-4.5: prayer calendar ───────────────────────────────────────────
+
+    /** Calendar chip tapped → open the sheet on today's month + select today. */
+    fun openCalendar() {
+        val today = java.time.LocalDate.now()
+        _state.update {
+            it.copy(
+                calendarMonth = java.time.YearMonth.from(today),
+                calendarSelectedDate = today.toString()
+            )
+        }
+        refreshCalendarData()
+    }
+
+    /** User paged months with ‹ › — reload that month's prayed-dots. */
+    fun changeCalendarMonth(delta: Int) {
+        _state.update { it.copy(calendarMonth = it.calendarMonth.plusMonths(delta.toLong())) }
+        refreshCalendarData()
+    }
+
+    /** User tapped a day — reload its prayed/not-prayed detail. */
+    fun selectCalendarDate(iso: String) {
+        _state.update { it.copy(calendarSelectedDate = iso) }
+        refreshCalendarDetail()
+    }
+
+    /** One read-only query per month: which ISO days have ≥1 prayed prayer. */
+    private fun refreshCalendarData() {
+        viewModelScope.launch {
+            val month = _state.value.calendarMonth
+            val rows = salahRepository.getSalahLogBetween(
+                month.atDay(1).toString(),
+                month.atEndOfMonth().toString()
+            )
+            val days = rows.filter { it.prayed }
+                .map { it.date }
+                .toSet()
+            _state.update { it.copy(calendarDaysWithPrayers = days) }
+            refreshCalendarDetail()
+        }
+    }
+
+    /** Detail panel under the grid: prayer → prayed for the selected date. */
+    private suspend fun refreshCalendarDetail() {
+        val iso = _state.value.calendarSelectedDate ?: return
+        val rows = salahRepository.getSalahLogBetween(iso, iso)
+        val detail = linkedMapOf<String, Boolean>()
+        PrayerName.entries.forEach { prayer ->
+            val row = rows.find { it.prayer == prayer.name }
+            detail[prayer.name] = row?.prayed == true
+        }
+        _state.update { it.copy(calendarDetail = detail) }
     }
 
     // ── notification permission (kept from Phase 3 — still needed) ──────────

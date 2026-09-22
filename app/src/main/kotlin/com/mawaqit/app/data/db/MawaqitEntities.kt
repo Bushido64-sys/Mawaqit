@@ -71,7 +71,11 @@ interface PrayerTimeDao {
 /**
  * salah_log — which prayers the user marked as prayed each day.
  * (Written from PHASE_4's UI; the table exists from Phase 2 so the schema
- * is stable. Cleanup: keep only the last 30 days.)
+ * is stable.)
+ *
+ * PHASE-4.5 — the 30-day auto-cleanup is RETIRED: the prayer calendar keeps
+ * history forever (user decision), and the table is tiny (≤5 rows/day), so
+ * there is nothing to gain from deleting.
  */
 @Entity(
     tableName = "salah_log",
@@ -97,10 +101,10 @@ interface SalahLogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(log: SalahLogEntity)
 
-    @Query("DELETE FROM salah_log WHERE date < :cutoffDate")
-    suspend fun deleteOlderThan(cutoffDate: String)
-    // SAFE only because dates are ISO (lexicographic == chronological).
-    // cutoffDate = LocalDate.now().minusDays(30) formatted ISO.
+    /** Inclusive date-range read (ISO dates ⇒ lexicographic == chronological).
+     *  PHASE-4.5 prayer calendar — one month per query. */
+    @Query("SELECT * FROM salah_log WHERE date BETWEEN :startDate AND :endDate ORDER BY date ASC")
+    suspend fun getSalahLogBetween(startDate: String, endDate: String): List<SalahLogEntity>
 }
 
 /**

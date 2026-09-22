@@ -4,6 +4,8 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,10 +16,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,8 +41,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -46,7 +57,9 @@ import com.mawaqit.app.ui.components.AyahCard
 import com.mawaqit.app.ui.components.LoadingState
 import com.mawaqit.app.ui.components.NextPrayerCard
 import com.mawaqit.app.ui.components.PrayerRow
+import com.mawaqit.app.ui.theme.PrimaryBlue
 import com.mawaqit.app.ui.theme.PrimaryGold
+import com.mawaqit.app.ui.theme.SuccessGreen
 import com.mawaqit.app.util.PrayerStatus
 import com.mawaqit.app.util.formatCountdown
 import com.mawaqit.app.util.parseTimeToMillis
@@ -157,6 +170,7 @@ private fun TimesContent(state: HomeUiState, viewModel: HomeViewModel) {
     // (never when a widget is hosted or previously dismissed); the 5s delay
     // + one-shot flag live here, so it appears at most once per app open.
     var showPromoSheet by remember { mutableStateOf(false) }
+    var showCalendarSheet by remember { mutableStateOf(false) } // PHASE-4.5
     LaunchedEffect(Unit) {
         delay(5_000)
         if (state.showWidgetPromo) showPromoSheet = true
@@ -170,6 +184,21 @@ private fun TimesContent(state: HomeUiState, viewModel: HomeViewModel) {
                     showPromoSheet = false
                     viewModel.dismissWidgetPromo() // "Not now" = permanent
                 }
+            )
+        }
+    }
+
+    // PHASE-4.5 — the prayer calendar bottom sheet.
+    if (showCalendarSheet) {
+        ModalBottomSheet(onDismissRequest = { showCalendarSheet = false }) {
+            PrayerCalendarSheet(
+                month = state.calendarMonth,
+                selectedDate = state.calendarSelectedDate,
+                daysWithPrayers = state.calendarDaysWithPrayers,
+                detail = state.calendarDetail,
+                onPrevMonth = { viewModel.changeCalendarMonth(-1) },
+                onNextMonth = { viewModel.changeCalendarMonth(1) },
+                onSelectDate = viewModel::selectCalendarDate
             )
         }
     }
@@ -199,11 +228,21 @@ private fun TimesContent(state: HomeUiState, viewModel: HomeViewModel) {
         }
 
         Spacer(Modifier.height(16.dp))
-        Text(
-            stringResource(R.string.todays_prayers),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                stringResource(R.string.todays_prayers),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            CalendarChip(onClick = {
+                viewModel.openCalendar()
+                showCalendarSheet = true
+            })
+        }
         Spacer(Modifier.height(4.dp))
 
         val statuses = remember(timings, now) {
@@ -323,6 +362,232 @@ private fun WidgetPromoSheetContent(onAdd: () -> Unit, onDismiss: () -> Unit) {
                 stringResource(R.string.widget_promo_dismiss),
                 color = MaterialTheme.colorScheme.outline
             )
+        }
+    }
+}
+
+/**
+ * PHASE-4.5 — opens the prayer calendar. Gold-bordered circular chip, blue
+ * icon — the same gold/blue language as the reader's mark pill.
+ */
+@Composable
+private fun CalendarChip(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, PrimaryGold, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Event,
+            contentDescription = stringResource(R.string.calendar_open),
+            tint = PrimaryBlue,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+/**
+ * PHASE-4.5 — the prayer calendar sheet: month grid (Mon-first, gold dot on
+ * every day with ≥1 prayed prayer, gold ring on today), ‹ › month paging,
+ * and a tapped-day detail listing all five prayers with gold ✓ = prayed.
+ * All names/dates render locale-aware; no DB writes — history is read-only.
+ */
+@Composable
+private fun PrayerCalendarSheet(
+    month: java.time.YearMonth,
+    selectedDate: String?,
+    daysWithPrayers: Set<String>,
+    detail: Map<String, Boolean>,
+    onPrevMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    onSelectDate: (String) -> Unit
+) {
+    val today = java.time.LocalDate.now()
+    val weekDays = remember {
+        java.time.DayOfWeek.values().map {
+            it.getDisplayName(java.time.format.TextStyle.NARROW, java.util.Locale.getDefault())
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .padding(bottom = 24.dp)
+    ) {
+        // ── Month header ──
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CalendarIconButton(Icons.Filled.KeyboardArrowLeft, onPrevMonth)
+            Text(
+                text = month.format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy")),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            CalendarIconButton(Icons.Filled.KeyboardArrowRight, onNextMonth)
+        }
+        Spacer(Modifier.height(12.dp))
+
+        // ── Weekday initials (Mon-first, locale-aware) ──
+        Row(modifier = Modifier.fillMaxWidth()) {
+            weekDays.forEach { day ->
+                Text(
+                    text = day,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+
+        // ── Day grid (leading blanks align day 1 to its weekday) ──
+        val firstOffset = month.atDay(1).dayOfWeek.value - 1 // Mon=1 → 0 blanks
+        val daysInMonth = month.lengthOfMonth()
+        val rowCount = (firstOffset + daysInMonth + 6) / 7
+        repeat(rowCount) { rowIndex ->
+            Row(modifier = Modifier.fillMaxWidth()) {
+                repeat(7) { col ->
+                    val cell = rowIndex * 7 + col
+                    if (cell < firstOffset) {
+                        Spacer(Modifier.weight(1f))
+                    } else {
+                        val date = month.atDay(cell - firstOffset + 1)
+                        val iso = date.toString()
+                        DayCell(
+                            day = date.dayOfMonth,
+                            isToday = date == today,
+                            isSelected = iso == selectedDate,
+                            hasPrayers = iso in daysWithPrayers,
+                            onClick = { onSelectDate(iso) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(2.dp))
+        }
+
+        // ── Tapped-day detail ──
+        selectedDate?.let { iso ->
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(12.dp))
+            val date = try {
+                java.time.LocalDate.parse(iso)
+            } catch (_: Exception) {
+                null
+            }
+            Text(
+                text = date?.format(
+                    java.time.format.DateTimeFormatter.ofPattern("EEEE, d MMM yyyy")
+                ) ?: iso,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.height(8.dp))
+            PrayerName.entries.forEach { prayer ->
+                val prayed = detail[prayer.name] == true
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = stringResource(
+                            if (prayed) R.string.content_desc_marked_prayed
+                            else R.string.content_desc_not_prayed
+                        ),
+                        tint = if (prayed) SuccessGreen
+                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = com.mawaqit.app.ui.components.PrayerNameLabel(prayer),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (prayed) MaterialTheme.colorScheme.onSurface
+                        else MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** ‹ / › month pager button for the calendar header. */
+@Composable
+private fun CalendarIconButton(icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = PrimaryBlue,
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+/** One day in the calendar grid: gold ring = today, shade = selected, dot = prayed. */
+@Composable
+private fun DayCell(
+    day: Int,
+    isToday: Boolean,
+    isSelected: Boolean,
+    hasPrayers: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .padding(1.dp)
+            .height(36.dp)
+            .clip(CircleShape)
+            .background(
+                when {
+                    isSelected -> PrimaryGold.copy(alpha = 0.18f)
+                    else -> Color.Transparent
+                }
+            )
+            .border(
+                width = if (isToday) 1.dp else 0.dp,
+                color = PrimaryGold,
+                shape = CircleShape
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = day.toString(),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (isToday || isSelected) FontWeight.Bold else FontWeight.Normal,
+                color = if (isSelected) PrimaryBlue else Color.Unspecified
+            )
+            if (hasPrayers) {
+                Box(
+                    modifier = Modifier
+                        .size(4.dp)
+                        .clip(CircleShape)
+                        .background(PrimaryGold)
+                )
+            }
         }
     }
 }

@@ -171,11 +171,15 @@ class SurahDetailViewModel @Inject constructor(
             }
         }
 
+        // PHASE-6.5 fix — the unlock pointer is ALWAYS derived from furthest:
+        // re-pinning an earlier read page must never rewind it (the bug that
+        // dimmed legitimately-earned pages while their taps still worked).
         val coachWasActive = state.coachVisible
+        val newFurthest = maxOf(state.furthestAyah, pageLastAyah)
         _uiState.update {
             it.copy(
-                furthestAyah = maxOf(it.furthestAyah, pageLastAyah),
-                nextUnlockAyah = (pageLastAyah + 1).takeIf { next -> next <= total } ?: 0,
+                furthestAyah = newFurthest,
+                nextUnlockAyah = (newFurthest + 1).takeIf { next -> next <= total } ?: 0,
                 lockReason = null,
                 coachVisible = false
             )

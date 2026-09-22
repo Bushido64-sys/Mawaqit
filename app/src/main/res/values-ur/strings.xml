@@ -37,4 +37,6 @@
     <string name="enter_city_manually">شہر کا نام درج کریں</string>
     <string name="next">آگے →</string>
     <string name="get_started">شروع کریں</string>
+
+    <string name="calendar_open">نماز کیلنڈر</string>
 </resources>

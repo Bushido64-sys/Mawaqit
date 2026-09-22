@@ -19,6 +19,9 @@
     <string name="alarm_is_off">Alarm is OFF</string>
     <string name="mark_as_prayed">Mark as Prayed</string>
 
+    <!-- Prayer calendar (PHASE-4.5) -->
+    <string name="calendar_open">Prayer calendar</string>
+
     <!-- Alarms (PHASE_3) -->
     <string name="alarm_channel_name">Prayer Alarms</string>
     <string name="azan_notification_title">Azan — %1$s</string>
