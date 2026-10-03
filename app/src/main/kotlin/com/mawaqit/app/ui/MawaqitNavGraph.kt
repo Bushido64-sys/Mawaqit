@@ -47,6 +47,7 @@ import androidx.navigation.navArgument
 import com.mawaqit.app.R
 import com.mawaqit.app.ui.home.HomeScreen
 import com.mawaqit.app.ui.quran.QuranListScreen
+import com.mawaqit.app.ui.qibla.QiblaScreen
 import com.mawaqit.app.ui.quran.SurahDetailScreen
 import com.mawaqit.app.ui.theme.PrimaryGold
 
@@ -143,7 +144,7 @@ fun MawaqitNavGraph(navController: NavHostController) {
             composable("quran") {
                 QuranListScreen(onSurahClick = { number -> navController.navigate("surah/$number") })
             }
-            composable("qibla") { ComingSoonScreen(stringResource(R.string.tab_qibla), 7) }
+            composable("qibla") { QiblaScreen() }
             composable("settings") { ComingSoonScreen(stringResource(R.string.tab_settings), 8) }
             composable(
                 route = "surah/{number}",

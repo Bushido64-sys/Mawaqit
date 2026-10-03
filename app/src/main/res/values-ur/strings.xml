@@ -24,6 +24,8 @@
 
     <string name="al_quran">القرآن</string>
     <string name="qibla_direction">قبلہ سمت</string>
+    <string name="qibla_finding_location">مقام تلاش ہو رہا ہے…</string>
+    <string name="qibla_location_failed">مقام دستیاب نہیں — GPS اجازت چیک کریں</string>
     <string name="settings">ترتیبات</string>
 
     <string name="error_no_internet">نماز کے اوقات لوڈ نہیں ہو سکے۔ انٹرنیٹ کنکشن چیک کریں۔</string>
