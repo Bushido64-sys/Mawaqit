@@ -23,14 +23,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.drawText
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mawaqit.app.R
@@ -46,6 +50,7 @@ import kotlin.math.sin
 @Composable
 fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val measurer = rememberTextMeasurer()
     val animatedRotation by animateFloatAsState(
         targetValue = state.needleRotation,
         animationSpec = spring(stiffness = Spring.StiffnessLow),
@@ -94,18 +99,15 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
                     }
 
                     // cardinal labels
-                    drawContext.canvas.nativeCanvas.apply {
-                        val paint = android.graphics.Paint().apply {
-                            color = android.graphics.Color.parseColor("#12181F")
-                            textSize = 28f
-                            textAlign = android.graphics.Paint.Align.CENTER
-                            isFakeBoldText = true
-                        }
-                        drawText("N", c.x, c.y - r + 28f, paint)
-                        drawText("S", c.x, c.y + r - 8f, paint)
-                        drawText("E", c.x + r - 12f, c.y + 10f, paint)
-                        drawText("W", c.x - r + 12f, c.y + 10f, paint)
+                    val style = TextStyle(color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    fun drawCardinal(txt: String, x: Float, y: Float) {
+                        val res = measurer.measure(txt, style)
+                        drawText(res, topLeft = Offset(x - res.size.width / 2f, y - res.size.height / 2f))
                     }
+                    drawCardinal("N", c.x, c.y - r + 18f)
+                    drawCardinal("S", c.x, c.y + r - 18f)
+                    drawCardinal("E", c.x + r - 14f, c.y)
+                    drawCardinal("W", c.x - r + 14f, c.y)
 
                     // needle
                     rotate(degrees = animatedRotation, pivot = c) {
