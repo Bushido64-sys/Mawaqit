@@ -28,13 +28,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.drawText
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mawaqit.app.R
@@ -50,7 +46,6 @@ import kotlin.math.sin
 @Composable
 fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val measurer = rememberTextMeasurer()
     val animatedRotation by animateFloatAsState(
         targetValue = state.needleRotation,
         animationSpec = spring(stiffness = Spring.StiffnessLow),
@@ -86,6 +81,13 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
             modifier = Modifier.size(300.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
+                val cardSize = 300.dp
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Text("N", Modifier.align(Alignment.TopCenter).padding(top = 10.dp), color = TextPrimary, fontWeight = FontWeight.Bold)
+                    Text("S", Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp), color = TextPrimary, fontWeight = FontWeight.Bold)
+                    Text("E", Modifier.align(Alignment.CenterEnd).padding(end = 10.dp), color = TextPrimary, fontWeight = FontWeight.Bold)
+                    Text("W", Modifier.align(Alignment.CenterStart).padding(start = 10.dp), color = TextPrimary, fontWeight = FontWeight.Bold)
+                }
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val c = center
                     val r = size.minDimension / 2f - 24f
@@ -98,16 +100,6 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
                         drawLine(TextMuted.copy(alpha = 0.3f), start, end, strokeWidth = 2f, cap = StrokeCap.Round)
                     }
 
-                    // cardinal labels
-                    val style = TextStyle(color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    fun drawCardinal(txt: String, x: Float, y: Float) {
-                        val res = measurer.measure(txt, style)
-                        drawText(res, topLeft = Offset(x - res.size.width / 2f, y - res.size.height / 2f))
-                    }
-                    drawCardinal("N", c.x, c.y - r + 18f)
-                    drawCardinal("S", c.x, c.y + r - 18f)
-                    drawCardinal("E", c.x + r - 14f, c.y)
-                    drawCardinal("W", c.x - r + 14f, c.y)
 
                     // needle
                     rotate(degrees = animatedRotation, pivot = c) {
