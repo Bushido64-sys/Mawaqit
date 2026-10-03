@@ -9,6 +9,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,6 +33,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -397,6 +400,7 @@ private fun CalendarChip(onClick: () -> Unit) {
  * and a tapped-day detail listing all five prayers with gold ✓ = prayed.
  * All names/dates render locale-aware; no DB writes — history is read-only.
  */
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun PrayerCalendarSheet(
     month: java.time.YearMonth,
@@ -499,31 +503,64 @@ private fun PrayerCalendarSheet(
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(8.dp))
-            PrayerName.entries.forEach { prayer ->
-                val prayed = detail[prayer.name] == true
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Check,
-                        contentDescription = stringResource(
-                            if (prayed) R.string.content_desc_marked_prayed
-                            else R.string.content_desc_not_prayed
-                        ),
-                        tint = if (prayed) SuccessGreen
-                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        text = com.mawaqit.app.ui.components.PrayerNameLabel(prayer),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (prayed) MaterialTheme.colorScheme.onSurface
-                        else MaterialTheme.colorScheme.outline
-                    )
+            val prayedCount = PrayerName.entries.count { detail[it.name] == true }
+            Text(
+                text = stringResource(R.string.calendar_prayed_count, prayedCount),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = if (prayedCount == PrayerName.entries.size) SuccessGreen
+                else MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.height(6.dp))
+            LinearProgressIndicator(
+                progress = { prayedCount.toFloat() / PrayerName.entries.size },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(50)),
+                color = SuccessGreen,
+                trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+            )
+            Spacer(Modifier.height(12.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                PrayerName.entries.forEach { prayer ->
+                    val prayed = detail[prayer.name] == true
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(
+                                if (prayed) SuccessGreen.copy(alpha = 0.12f)
+                                else Color.Transparent
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = if (prayed) SuccessGreen
+                                else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                                shape = RoundedCornerShape(50)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (prayed) {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = stringResource(R.string.content_desc_marked_prayed),
+                                tint = SuccessGreen,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                        }
+                        Text(
+                            text = com.mawaqit.app.ui.components.PrayerNameLabel(prayer),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (prayed) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (prayed) SuccessGreen
+                            else MaterialTheme.colorScheme.outline
+                        )
+                    }
                 }
             }
         }

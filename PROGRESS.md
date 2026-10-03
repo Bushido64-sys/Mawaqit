@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-22 — [PHASE-6.5] user-TESTED (passed, 1 bug found) → [PHASE-4.5] "Prayer Calendar" + dim-fix BUILT, PUSHED & BUILD-GREEN verified (34a960d) — AWAITING user test (checklist below). APK: GitHub Actions auto-build on every push.**
+> **Last updated: 2026-09-22 — [PHASE-4.5] user-TESTED: dim-fix FAILED (same desync) + calendar CRASHED on open → HOTFIX built & GREEN (aee310f): one-clock button + grid guard — AWAITING user test (checklist below). APK: GitHub Actions auto-build on every push.**
 
 ---
 
@@ -18,19 +18,23 @@ from a detailed guidebook (`mawaqit-guidebook/`), with the user learning as we g
 [PHASE-5.2] on device — "the widget looks better than before" — fonts +
 responsive layouts + 5s popup all verified.
 
-**[PHASE-6.5] user-TESTED → PASSED (one bug found: dim-desync, fixed in 4.5).
-NOW: [PHASE-4.5] "Prayer Calendar" + dim-fix built (34a960d, build GREEN
-verified via API) — AWAITING user test. Open the next session by asking for
-THESE results BEFORE any new work:
+**[PHASE-4.5] user-TESTED → 2 FAILURES (both root-caused & fixed in aee310f):
+(1) dim-desync persisted — the screen and the VM used TWO formulas on TWO
+inputs, so aligning values (34a960d) couldn't hold; (2) the calendar sheet
+CRASHED on open — the day grid guarded cells before day 1 but NOT after the
+month's last day (Sep 2026: Tue start, 30 days → atDay(32..35) →
+DateTimeException). NOW: [PHASE-4.5 HOTFIX] built (aee310f, 3 files
++42/−21, build GREEN verified via API) — AWAITING user test. Open the next
+session by asking for THESE results BEFORE any new work:
 | # | Test | Expect |
 |---|------|--------|
-| 1 | Quran: re-tap an OLD "Read ✓" page, then view the next unread page | Next page's pill is NOT dimmed anymore (desync fix); marking still works |
-| 2 | Locked pages (regression) | Locked pills still dimmed; both lock popups still fire on locked taps |
-| 3 | Home: gold-border calendar chip on the "Today's prayers" row | Opens a bottom-sheet calendar on today's month; today ringed gold + pre-selected |
-| 4 | Calendar grid | Gold dot under every day with ≥1 prayed prayer (incl. notification "Mark as Prayed" days); ‹ › pages months |
-| 5 | Tap any date | Detail lists all 5 prayers — green ✓ = prayed, dim = not marked |
-| 6 | History forever | Old 30-day auto-delete is GONE — logs persist (verify: marks stay visible across weeks) |
-| 7 | Regression sweep | Prayer checkmarks, alarm switches, azan, widget, Quran progress: all untouched |
+| 1 | Home: tap the gold calendar chip | Sheet OPENS (no crash) on today's month; today ringed gold + pre-selected |
+| 2 | Calendar grid (Sep 2026!) | 30 days, correct Tue start; gold dot under every prayed day; ‹ › page months — try Nov 2026 too (Sun start) |
+| 3 | Tap any date | Detail lists all 5 prayers — green ✓ = prayed, dim = not marked |
+| 4 | Quran: mark pages in order | The NEXT unread page's pill is visibly LIT (brighter gold fill + gold border), never grey |
+| 5 | Re-tap an old "Read ✓" page | Next unread page STAYS lit; re-pin works; no regression |
+| 6 | Locked pages (regression) | Still 40% dimmed; both lock popups still fire on locked taps |
+| 7 | Regression sweep | Prayer checkmarks, alarm switches, azan, widget, Quran progress card: all untouched |
 Known caveats: days already wiped by the OLD cleanup are unrecoverable; sheet
 labels follow the phone locale; calendar is read-only (no editing past days).
 
@@ -51,9 +55,17 @@ lesson below):**
   "Today's prayers" row; PrayerCalendarSheet = ModalBottomSheet, Mon-first
   locale-aware grid (leading blanks align day 1), gold dot per prayed day,
   gold ring on today, tapped-day detail with SuccessGreen checks.
-- SurahDetailViewModel dim-desync FIX: markPage() derives nextUnlockAyah from
-  the NEW furthestAyah (max of old, pageLastAyah) — re-pinning an old page can
-  no longer rewind the unlock pointer. Fresh-surah default stays =1.
+- SurahDetailViewModel dim-desync fix (34a960d) was SUPERSEDED in aee310f:
+  nextUnlockAyah NO LONGER EXISTS anywhere. ONE clock = furthestAyah; the
+  screen derives brightness from the VM gate's EXACT formula
+  (blockerSurahName == null && firstAyahOnPage <= furthestAyah + 1), giving
+  three states: read (solid gold "Read ✓") / frontier LIT (0.42 gold fill +
+  gold border) / locked (40% dim + popups). Look ≡ permission by construction.
+- NEW BUILD LESSONS: (1) grid loops over date ranges must guard BOTH bounds
+  — atDay() past lengthOfMonth() throws DateTimeException and kills the app;
+  (2) a UI "looks X" and a gate "allows X" MUST read the same state through
+  the same formula — two counters for one truth WILL desync (bug reported
+  twice before the structural fix).
 - NEW BUILD LESSON: importing Icons.Filled.X (vectors) is NOT the same as
   importing androidx.compose.material3.Icon (composable) — forgetting the
   latter fails with "Unresolved reference: Icon" at USE sites. Also: suspend
