@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-09-22 — [PHASE-4.5] user-TESTED: dim-fix FAILED (same desync) + calendar CRASHED on open → HOTFIX built & GREEN (aee310f): one-clock button + grid guard — AWAITING user test (checklist below). APK: GitHub Actions auto-build on every push.**
+> **Last updated: 2026-10-03 — [PHASE-4.5]+HOTFIX PASSED on device (calendar sheet opens, grid correct, chips+count+progress layout verified) → calendar detail UI reworked [f96ae04, build GREEN] → USER-PASSED. Next: PHASE_7 (Qibla) plan. APK: GitHub Actions auto-build on every push.**
 
 ---
 
@@ -18,14 +18,11 @@ from a detailed guidebook (`mawaqit-guidebook/`), with the user learning as we g
 [PHASE-5.2] on device — "the widget looks better than before" — fonts +
 responsive layouts + 5s popup all verified.
 
-**[PHASE-4.5] user-TESTED → 2 FAILURES (both root-caused & fixed in aee310f):
-(1) dim-desync persisted — the screen and the VM used TWO formulas on TWO
-inputs, so aligning values (34a960d) couldn't hold; (2) the calendar sheet
-CRASHED on open — the day grid guarded cells before day 1 but NOT after the
-month's last day (Sep 2026: Tue start, 30 days → atDay(32..35) →
-DateTimeException). NOW: [PHASE-4.5 HOTFIX] built (aee310f, 3 files
-+42/−21, build GREEN verified via API) — AWAITING user test. Open the next
-session by asking for THESE results BEFORE any new work:
+**[PHASE-4.5]+HOTFIX (aee310f) + calendar detail rework (f96ae04) — USER-PASSED
+2026-10-03. Details: dim-desync root-caused (screen & VM used two formulas) → one clock
+(furthestAyah); calendar sheet crash fixed (grid 双端 guard); day-detail
+reworked: "X of 5 prayed" + green progress bar + per-prayer pill chips.
+Historical checklist (all verified):
 | # | Test | Expect |
 |---|------|--------|
 | 1 | Home: tap the gold calendar chip | Sheet OPENS (no crash) on today's month; today ringed gold + pre-selected |
@@ -315,7 +312,7 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
 | 3 | Alarms (AlarmReceiver, BootReceiver, AzanService) | ✅ PASSED — phone test 6/6 on 2026-09-18 (silent stubs; 5-min dismiss verified in code) |
 | 4 | Home screen UI | ✅ PASSED 2026-09-19 — user confirmed live rollover, gold current-prayer highlight, azan notification. Bonus fix: one-frame setup flash on cold start (needsLocation tri-state) |
 | 5 | Widget (Glance; lock-screen = opportunistic bonus) | ✅ PASSED — [PHASE-5.2] verified on device 2026-09-19 ("looks better than before") |
-| 6 | Quran (UmmahAPI — endpoints re-verified live in Sept 2026) | 🚧 CODE COMPLETE (0fdbb31) — awaiting Actions-built APK + phone test |
+| 6 | Quran (UmmahAPI — endpoints re-verified live in Sept 2026) | ✅ PASSED (incl. 6.1–6.5, APK from Actions) |
 | 7 | Qibla | not started |
 | 8 | Settings (DataStore, Urdu, per-app language) | not started |
 | 9 | Polish (splash: ONE card per launch, ~5s, bundled ≤4MB video) | not started |
