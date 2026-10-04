@@ -48,13 +48,6 @@ class CompassSensorManager @Inject constructor(
                         }
                         else -> Float.NaN
                     }
-                } else {
-                    val sensorRotation = FloatArray(9)
-                    SensorManager.getRotationMatrixFromVector(sensorRotation, event.values)
-                    System.arraycopy(sensorRotation, 0, rotationMatrix, 0, 9)
-                    SensorManager.getOrientation(rotationMatrix, orientation)
-                    Math.toDegrees(orientation[0].toDouble()).toFloat()
-                }
                 if (!azimuth.isNaN()) {
                     val normalized = ((azimuth % 360f) + 360f) % 360f
                     trySend(normalized)
@@ -79,9 +72,6 @@ class CompassSensorManager @Inject constructor(
                 ?.let { sensorManager.registerListener(listener, it, delay) }
             sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
                 ?.let { sensorManager.registerListener(listener, it, delay) }
-        } else {
-            sensorManager.registerListener(listener, rotationVector, delay)
-        }
 
         awaitClose { sensorManager.unregisterListener(listener) }
     }.distinctUntilChanged { a, b -> abs(a - b) < 1f }
