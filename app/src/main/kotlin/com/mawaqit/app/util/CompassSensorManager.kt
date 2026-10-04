@@ -36,8 +36,7 @@ class CompassSensorManager @Inject constructor(
             private val orientation = FloatArray(3)
 
             override fun onSensorChanged(event: SensorEvent) {
-                val azimuth: Float = if (usesFallback) {
-                    when (event.sensor.type) {
+                val azimuth: Float = when (event.sensor.type) {
                         Sensor.TYPE_ACCELEROMETER -> {
                             System.arraycopy(event.values, 0, gravity, 0, 3)
                             computeFallbackAzimuth()
@@ -48,7 +47,6 @@ class CompassSensorManager @Inject constructor(
                         }
                         else -> Float.NaN
                     }
-                }
                 if (!azimuth.isNaN()) {
                     val normalized = ((azimuth % 360f) + 360f) % 360f
                     trySend(normalized)
