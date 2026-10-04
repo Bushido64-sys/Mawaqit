@@ -72,6 +72,7 @@ class CompassSensorManager @Inject constructor(
                 ?.let { sensorManager.registerListener(listener, it, delay) }
             sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
                 ?.let { sensorManager.registerListener(listener, it, delay) }
+        }
 
         awaitClose { sensorManager.unregisterListener(listener) }
     }.distinctUntilChanged { a, b -> abs(a - b) < 1f }
