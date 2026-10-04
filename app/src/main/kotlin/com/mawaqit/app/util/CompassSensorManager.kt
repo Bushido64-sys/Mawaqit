@@ -48,6 +48,7 @@ class CompassSensorManager @Inject constructor(
                         }
                         else -> Float.NaN
                     }
+                }
                 if (!azimuth.isNaN()) {
                     val normalized = ((azimuth % 360f) + 360f) % 360f
                     trySend(normalized)
