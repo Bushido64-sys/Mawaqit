@@ -37,6 +37,25 @@ class QiblaViewModel @Inject constructor(
     val uiState: StateFlow<QiblaUiState> = _uiState.asStateFlow()
 
     init {
+        loadLocation()
+        viewModelScope.launch {
+            compass.getHeadingFlow().collect { heading ->
+                val bearing = _uiState.value.qiblaBearing
+                _uiState.value = _uiState.value.copy(
+                    deviceHeading = heading,
+                    needleRotation = ((bearing - heading) + 360f) % 360f
+                )
+            }
+        }
+    }
+
+    /** Re-fetch GPS (used when permission/location is granted after the first visit). */
+    fun refreshLocation() {
+        _uiState.value = _uiState.value.copy(isLoading = true, locationFailed = false)
+        loadLocation()
+    }
+
+    private fun loadLocation() {
         viewModelScope.launch {
             val location = locationHelper.getCurrentLocation()
             if (location == null) {
@@ -53,15 +72,6 @@ class QiblaViewModel @Inject constructor(
                     longitude = location.longitude,
                     locationName = name,
                     isLoading = false
-                )
-            }
-        }
-        viewModelScope.launch {
-            compass.getHeadingFlow().collect { heading ->
-                val bearing = _uiState.value.qiblaBearing
-                _uiState.value = _uiState.value.copy(
-                    deviceHeading = heading,
-                    needleRotation = ((bearing - heading) + 360f) % 360f
                 )
             }
         }

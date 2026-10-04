@@ -107,6 +107,9 @@
     <string name="qibla_direction">Qibla Direction</string>
     <string name="qibla_finding_location">Finding your location…</string>
     <string name="qibla_location_failed">Location unavailable — check GPS permission</string>
+    <string name="qibla_need_permission">Allow location so the compass can show your Qibla direction.</string>
+    <string name="qibla_grant_button">Allow Location</string>
+    <string name="qibla_location_off">Location services are off — turn on GPS for an accurate Qibla.</string>
     <string name="towards_mecca">° towards Mecca</string>
     <string name="qibla_accuracy_tip">Point your phone flat for best accuracy</string>
     <string name="qibla_calibration_tip">If the compass seems off, move your phone in a figure-8 pattern to calibrate.</string>

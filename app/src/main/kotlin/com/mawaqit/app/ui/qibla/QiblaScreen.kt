@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -33,6 +32,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.location.LocationManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.Button
 import com.mawaqit.app.R
 import com.mawaqit.app.ui.theme.BgOffwhite
 import com.mawaqit.app.ui.theme.PrimaryGold
@@ -46,6 +58,37 @@ import kotlin.math.sin
 @Composable
 fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var hasPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+    var locationOn by remember {
+        mutableStateOf(
+    run {
+            val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            try {
+                lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                    lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+            } catch (e: Exception) {
+                true
+            }
+        }
+        )
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasPermission = granted
+        if (granted) viewModel.refreshLocation()
+    }
+    LaunchedEffect(Unit) {
+        if (hasPermission) viewModel.refreshLocation()
+    }
     val animatedRotation by animateFloatAsState(
         targetValue = state.needleRotation,
         animationSpec = spring(stiffness = Spring.StiffnessLow),
@@ -73,6 +116,27 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
             color = TextMuted
         )
         Spacer(Modifier.height(24.dp))
+
+        if (!hasPermission) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(stringResource(R.string.qibla_need_permission), color = TextMuted)
+                    Spacer(Modifier.height(12.dp))
+                    Button(onClick = {
+                        permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    }) {
+                        Text(stringResource(R.string.qibla_grant_button))
+                    }
+                }
+            }
+            return@Column
+        }
+        if (!locationOn) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.qibla_location_off), modifier = Modifier.padding(16.dp), color = TextMuted)
+            }
+            return@Column
+        }
 
         Card(
             shape = androidx.compose.foundation.shape.CircleShape,
