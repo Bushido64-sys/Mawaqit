@@ -26,9 +26,7 @@ class CompassSensorManager @Inject constructor(
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
     fun getHeadingFlow(): Flow<Float> = callbackFlow {
-        val rotationVector = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
-            ?: sensorManager.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR)
-        val usesFallback = rotationVector == null
+        val usesFallback = true // always use accel+magnetic: reliable on every device
 
         val gravity = FloatArray(3)
         val geomagnetic = FloatArray(3)

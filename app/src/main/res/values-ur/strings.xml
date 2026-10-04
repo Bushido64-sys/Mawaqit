@@ -29,6 +29,8 @@
     <string name="qibla_need_permission">قبلہ سمت کے لیے مقام کی اجازت دیں۔</string>
     <string name="qibla_grant_button">اجازت دیں</string>
     <string name="qibla_location_off">لوکیشن بند ہے — درست قبلہ کے لیے GPS آن کریں۔</string>
+
+    <string name="qibla_enable_button">لوکیشن آن کریں</string>
     <string name="settings">ترتیبات</string>
 
     <string name="error_no_internet">نماز کے اوقات لوڈ نہیں ہو سکے۔ انٹرنیٹ کنکشن چیک کریں۔</string>

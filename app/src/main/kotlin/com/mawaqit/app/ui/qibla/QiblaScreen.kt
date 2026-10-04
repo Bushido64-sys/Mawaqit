@@ -46,6 +46,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.material3.Button
+import android.app.Activity
+import com.google.android.gms.common.api.ResolvableApiException
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.LocationSettingsRequest
+import com.google.android.gms.location.Priority
 import com.mawaqit.app.R
 import com.mawaqit.app.ui.theme.BgOffwhite
 import com.mawaqit.app.ui.theme.PrimaryGold
@@ -89,6 +95,31 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
     }
     LaunchedEffect(Unit) {
         if (hasPermission) viewModel.refreshLocation()
+    }
+
+    fun enableLocationServices() {
+        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10_000).build()
+        val settingsRequest = LocationSettingsRequest.Builder()
+            .addLocationRequest(request)
+            .setAlwaysShow(true)
+            .build()
+        LocationServices.getSettingsClient(context).checkLocationSettings(settingsRequest)
+            .addOnCompleteListener { task ->
+                try {
+                    task.getResult(Exception::class.java)
+                    locationOn = true
+                    viewModel.refreshLocation()
+                } catch (e: ResolvableApiException) {
+                    runCatching { e.startResolutionForResult(context as Activity, 1001) }
+                } catch (_: Exception) {
+                    // user must enable manually — open system settings
+                    runCatching {
+                        context.startActivity(
+                            android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                        )
+                    }
+                }
+            }
     }
     val animatedRotation by animateFloatAsState(
         targetValue = state.needleRotation,
@@ -134,7 +165,13 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
         }
         if (!locationOn) {
             Card(modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.qibla_location_off), modifier = Modifier.padding(16.dp), color = TextMuted)
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(stringResource(R.string.qibla_location_off), color = TextMuted)
+                    Spacer(Modifier.height(12.dp))
+                    Button(onClick = { enableLocationServices() }) {
+                        Text(stringResource(R.string.qibla_enable_button))
+                    }
+                }
             }
             return@Column
         }
