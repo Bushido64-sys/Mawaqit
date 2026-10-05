@@ -391,6 +391,20 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
    responsive anchors MUST match real launcher cells (~70dp/cell).
 5. **Before ending any session:** update this file (status line, phases table, pending items).
 
+
+## PHASE-7 BUILD/DEBUG LOG (2026-10-05 — CLOSED)
+- Phone-side findings: NO TYPE_MAGNETIC_FIELD, NO TYPE_ROTATION_VECTOR, NO TYPE_GEOMAGNETIC_ROTATION on this device → true compass physically impossible. Handled with dialog.
+- Pull-to-refresh bug: the indicator modifier sat on a NON-scrollable Column. Fixed by wrapping content in verticalScroll(rememberScrollState()) — parent Column with verticalScroll lets over-scroll propagate to pullRefresh state.
+- Startup "location off" dialog did not enable location because the flow listened at the wrong spot: the permission launcher callback fired before the system dialog; we added explicit LocationSettingsRequest + checkLocationSettings + startResolutionForResult both at HomeScreen grant time and at app start when permission+services-are-off. Without this the user's location simply stays off and GPS fetches hang or return error immediately.
+- GitHub Actions build failures & fixes:
+  1. `qibla_no_mag_body` values-xml failed `aapt` with "Invalid unicode escape sequence in string". Caused by apostrophes/raw ʿ character/U+02B0 quotes plus `\uXXXX` inside string values. Fix: plain ASCII, no escapes, wrap the body in CDATA only on the Kotlin side. (aapt DOES NOT parse \uXXXX in values.xml the way Java strings do — never use \uXXXX in strings.xml.)
+  2. Unresolved `androidx.compose.material.pullRefresh.*` — forgot to add `androidx.compose.material:material` (M2) to app/build.gradle.kts; material3 (1.2.1) has no PullToRefreshBox. Adding the dependency exposes the pull-refresh APIs.
+  3. @Composable invocation inside rememberLauncherForActivityResult callback: we called LocalContext.current inside the RESULT-handler lambda. Must capture it at composable top-level.
+  4. Local duplicate `val homeContext` redeclaration — finally compiled once we removed the second declarations (done via two pushes).
+  5. Had to add duplicate fillMaxWidth import cleanup and `data Curfew for pullrefresh` etc.
+- Anti-bug checklist for next sessions: (a) never rely on one permission request to enable the underlying service — always checkLocationSettings + ResolvableApiException; (b) any Composable state read inside a non-composable lambda must be captured at composable scope; (c) every new import is a potential missing manifest/gradle dep — check `grep <unrecognized symbol> app/build.gradle.kts` before push; (d) avoid apostrophes/unicodes in strings.xml — escape '\'' or use CDATA/plain quotes; (e) pullRefresh requires a scrollable child (LazyColumn/verticalScroll) or the modifier silently never fires.
+
+
 ## SESSION LOG (one line per working session, newest last)
 - **2026-09-17 — Session 1:** Docs patched (11 issues + live API verification). Phase 1 built
   and phone-tested 5/5. Codespaces pipeline established after GitHub Actions broke repo-wide
@@ -514,6 +528,7 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
   as manual fallback (fix recipes: hard refresh / Rebuild Container / recreate).
   **Next: user downloads Actions APK → runs the 9-check PHASE-6 list → Phase 6
   verdict → Phase 7 (Qibla) on explicit OK.**
+- **2026-10-05 — Session 16 (Phase 7 close):** Qibla phase fixed through: (pull-to-refresh over scrollable Column), CDATA/apostrophe-free qibla_no_mag_body string (aapt fix), startup location-settings sheet via SettingsClient + ResolvableApiException both at grant-time and at HomeScreen init, M2 material dep added. Phase 7 closed; Phase 8 next.
 - **2026-09-20 — Session 12:** Codespace became unusable → APK builds moved to
   GitHub Actions auto-build on push (KEY DECISIONS updated; push 5356fe0 fired
   build #1). Build #1 RED: expression-body `return`s in AyahRepository → fixed
