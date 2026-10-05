@@ -119,6 +119,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         ActivityResultContracts.RequestPermission()
     ) { /* denied: alarms still fire; only the banner is hidden */ }
     LaunchedEffect(Unit) {
+        viewModel.refreshIfStale() // location changed in Settings → reload times
         if (viewModel.needsNotificationPermission()) {
             notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }

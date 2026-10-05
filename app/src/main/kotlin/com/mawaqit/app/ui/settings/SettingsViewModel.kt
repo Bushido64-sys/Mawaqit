@@ -79,7 +79,9 @@ class SettingsViewModel @Inject constructor(
                     notificationsAllowed = _state.value.notificationsAllowed,
                     exactAlarmAllowed = _state.value.exactAlarmAllowed,
                     batteryOptimized = _state.value.batteryOptimized,
-                    appVersion = _state.value.appVersion
+                    appVersion = _state.value.appVersion,
+                    locationUpdating = _state.value.locationUpdating,
+                    locationError = _state.value.locationError
                 )
             }
         }
@@ -166,9 +168,14 @@ class SettingsViewModel @Inject constructor(
         _state.value = _state.value.copy(locationError = null)
     }
 
-    /** ~5s preview on Dispatchers.IO, then stop (ASSETS.md / PHASE_8 spec). */
+    /** ~5s preview on Dispatchers.IO, then stop (ASSETS.md / PHASE_8 spec).
+     *  A new preview cancels the previous one's trailing stop() so it can't
+     *  kill freshly started playback. */
+    private var previewJob: kotlinx.coroutines.Job? = null
+
     fun previewAzan(option: AzanOption) {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        previewJob?.cancel()
+        previewJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             azanPlayer.playAzan(
                 if (option == AzanOption.MAKKAH) com.mawaqit.app.alarm.AzanType.MAKKAH
                 else com.mawaqit.app.alarm.AzanType.DEFAULT
@@ -179,6 +186,8 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun stopAzanPreview() {
+        previewJob?.cancel()
+        previewJob = null
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { azanPlayer.stop() }
     }
 }
