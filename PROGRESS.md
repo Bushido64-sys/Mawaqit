@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-10-03 — [PHASE-4.5]+HOTFIX PASSED on device (calendar sheet opens, grid correct, chips+count+progress layout verified) → calendar detail UI reworked [f96ae04, build GREEN] → USER-PASSED. Next: PHASE_8 (Settings). APK: GitHub Actions auto-build on every push.**
+> **Last updated: 2026-10-05 — [PHASE-7 Qibla] CLOSED — compass UI, no-mag fallback, MeccaLocator cache, pull-to-refresh, startup location sheet, Tirmidhi-345 popup all GREEN (0210796/90212d2), plus PHASE-4.5 calendar passed earlier. Next: PHASE_8 (Settings).**
 
 ---
 
