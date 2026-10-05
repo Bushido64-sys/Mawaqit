@@ -31,6 +31,9 @@
     <string name="qibla_location_off">لوکیشن بند ہے — درست قبلہ کے لیے GPS آن کریں۔</string>
 
     <string name="qibla_enable_button">لوکیشن آن کریں</string>
+    <string name="qibla_no_mag_title">کمپاس دستیاب نہیں</string>
+    <string name="qibla_no_mag_body">السلام علیکم! آپ کے ڈیوائس میں میگنیٹومیٹر نہیں ہے، اس لیے لائیو کمپاس کام نہیں کرے گا۔ دکھائی گئی سمت قبلہ کی ہے — نماز کے وقت اسی سمت منہ کریں۔</string>
+    <string name="qibla_no_mag_ok">ٹھیک ہے</string>
     <string name="settings">ترتیبات</string>
 
     <string name="error_no_internet">نماز کے اوقات لوڈ نہیں ہو سکے۔ انٹرنیٹ کنکشن چیک کریں۔</string>

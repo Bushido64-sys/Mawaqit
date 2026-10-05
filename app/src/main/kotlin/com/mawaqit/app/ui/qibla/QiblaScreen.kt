@@ -23,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,7 +46,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import android.app.Activity
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
@@ -57,6 +60,9 @@ import com.mawaqit.app.ui.theme.BgOffwhite
 import com.mawaqit.app.ui.theme.PrimaryGold
 import com.mawaqit.app.ui.theme.SurfaceDeep
 import com.mawaqit.app.ui.theme.SurfaceWhite
+import com.mawaqit.app.ui.theme.PrimaryBlue
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.mawaqit.app.ui.theme.TextMuted
 import com.mawaqit.app.ui.theme.TextPrimary
 import kotlin.math.cos
@@ -87,6 +93,15 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
         }
         )
     }
+    var compassDismissed by remember { mutableStateOf(false) }
+    val hasMagnetometer = remember {
+        val sm = context.getSystemService(Context.SENSOR_SERVICE) as android.hardware.SensorManager
+        sm.getDefaultSensor(android.hardware.Sensor.TYPE_MAGNETIC_FIELD) != null ||
+            sm.getDefaultSensor(android.hardware.Sensor.TYPE_ROTATION_VECTOR) != null ||
+            sm.getDefaultSensor(android.hardware.Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR) != null ||
+            sm.getDefaultSensor(android.hardware.Sensor.TYPE_ORIENTATION) != null
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -126,6 +141,40 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
         animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "needle"
     )
+
+    if (!hasMagnetometer && !compassDismissed) {
+        AlertDialog(
+            onDismissRequest = { compassDismissed = true },
+            modifier = Modifier.border(1.5.dp, PrimaryBlue, RoundedCornerShape(24.dp)),
+            containerColor = SurfaceWhite,
+            shape = RoundedCornerShape(24.dp),
+            title = {
+                Text(
+                    text = stringResource(R.string.qibla_no_mag_title),
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.qibla_no_mag_body),
+                    color = TextMuted
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { compassDismissed = true },
+                    shape = RoundedCornerShape(50),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PrimaryGold,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text(stringResource(R.string.qibla_no_mag_ok), fontWeight = FontWeight.SemiBold)
+                }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier

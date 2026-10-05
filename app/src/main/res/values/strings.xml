@@ -112,6 +112,9 @@
     <string name="qibla_location_off">Location services are off — turn on GPS for an accurate Qibla.</string>
 
     <string name="qibla_enable_button">Turn On Location</string>
+    <string name="qibla_no_mag_title">Compass unavailable</string>
+    <string name="qibla_no_mag_body">Assalamu Alaikum! Your device has no magnetometer, so the live compass cannot work. The bearing shown points toward Mecca — face in that direction when you pray.</string>
+    <string name="qibla_no_mag_ok">Okay</string>
     <string name="towards_mecca">° towards Mecca</string>
     <string name="qibla_accuracy_tip">Point your phone flat for best accuracy</string>
     <string name="qibla_calibration_tip">If the compass seems off, move your phone in a figure-8 pattern to calibrate.</string>

@@ -25,6 +25,13 @@ class CompassSensorManager @Inject constructor(
 ) {
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
+    /** True only if the device has a magnetic-field sensor or rotation-vector sensor (= real compass). */
+    fun hasMagnetometer(): Boolean =
+        sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD) != null ||
+            sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR) != null ||
+            sensorManager.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR) != null ||
+            sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION) != null
+
     fun getHeadingFlow(): Flow<Float> = callbackFlow {
         val usesFallback = true // always use accel+magnetic: reliable on every device
 
