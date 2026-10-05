@@ -23,6 +23,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.repeat
+
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
@@ -73,6 +78,7 @@ import kotlin.math.sin
 fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var hasPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -113,18 +119,6 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
         if (hasPermission) viewModel.refreshLocation()
     }
 
-    val locationSettingsResultLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) {
-        val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        val nowOn = try {
-            lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
-                lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
-        } catch (e: Exception) { true }
-        locationOn = nowOn
-        if (nowOn) viewModel.refreshLocation()
-    }
-
     fun enableLocationServices() {
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10_000).build()
         val settingsRequest = LocationSettingsRequest.Builder()
@@ -138,7 +132,22 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
                     locationOn = true
                     viewModel.refreshLocation()
                 } catch (e: ResolvableApiException) {
-                    runCatching { locationSettingsResultLauncher.launch(e.intent) }
+                    runCatching { e.startResolutionForResult((context as Activity), 1001) }
+                    scope.launch {
+                        repeat(15) {
+                            kotlinx.coroutines.delay(2_000)
+                            val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+                            val nowOn = try {
+                                lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                                    lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+                            } catch (e2: Exception) { true }
+                            if (nowOn) {
+                                locationOn = true
+                                viewModel.refreshLocation()
+                                return@launch
+                            }
+                        }
+                    }
                 } catch (_: Exception) {
                     // user must enable manually — open system settings
                     runCatching {
