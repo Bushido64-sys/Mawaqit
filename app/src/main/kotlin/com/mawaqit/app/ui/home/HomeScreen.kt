@@ -113,7 +113,6 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         }
     }
 
-    val homeContext = androidx.compose.ui.platform.LocalContext.current
 
     // One-time notification permission (Android 13+) — azan banner needs it.
     val notifLauncher = rememberLauncherForActivityResult(
