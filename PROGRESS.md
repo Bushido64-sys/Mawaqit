@@ -607,3 +607,4 @@ at the end of the session. Don't start any new phase without my explicit OK.
 ```
 
 That's it. Those 3 reads = full context, every time. 🚀
+- **2026-10-05 — Session 18 (PHASE-8.1):** Home alarm switches removed (Settings owns them); unselected chip text now black on surfaceVariant; Location sheet = GPS auto-detect OR country→city via CountriesNowApiService (calendarByCity monthly fetch in MANUAL mode); Calculation method picker (8 methods, pref + cache invalidation + Home auto-reload). Build GREEN (8090254). User phone test pending.
