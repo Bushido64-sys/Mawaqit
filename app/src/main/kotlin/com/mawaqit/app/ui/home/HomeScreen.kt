@@ -99,6 +99,34 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         }
     }
 
+    // One-shot system "Turn on location" sheet on startup when app has
+    // permission but device location services are off.
+    val homeContext = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit) {
+        val hasPerm = androidx.core.content.ContextCompat.checkSelfPermission(
+            homeContext, android.Manifest.permission.ACCESS_FINE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED || androidx.core.content.ContextCompat.checkSelfPermission(
+            homeContext, android.Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!hasPerm) return@LaunchedEffect
+        val lm = homeContext.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
+        val off = try {
+            !lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER) &&
+                !lm.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)
+        } catch (e: Exception) { false }
+        if (!off) return@LaunchedEffect
+        val req = com.google.android.gms.location.LocationRequest
+            .Builder(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, 10_000).build()
+        val sreq = com.google.android.gms.location.LocationSettingsRequest.Builder()
+            .addLocationRequest(req).setAlwaysShow(true).build()
+        com.google.android.gms.location.LocationServices.getSettingsClient(homeContext)
+            .checkLocationSettings(sreq).addOnCompleteListener { task ->
+                try { task.getResult(Exception::class.java) } catch (e: com.google.android.gms.common.api.ResolvableApiException) {
+                    runCatching { e.startResolutionForResult(homeContext as android.app.Activity, 1002) }
+                } catch (_: Exception) {}
+            }
+    }
+
     when {
         // needsLocation == null → still checking saved prefs: show the spinner,
         // NOT the setup screen (prevents the one-frame "Assalamualaikum" flash).

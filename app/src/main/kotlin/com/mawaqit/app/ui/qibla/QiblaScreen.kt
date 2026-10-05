@@ -74,6 +74,7 @@ import com.mawaqit.app.ui.theme.TextPrimary
 import kotlin.math.cos
 import kotlin.math.sin
 
+@OptIn(androidx.compose.material.ExperimentalMaterialApi::class)
 @Composable
 fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -198,29 +199,28 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
         )
     }
 
-    Column(
+    val pullState = androidx.compose.material.pullrefresh.rememberPullRefreshState(
+        refreshing = state.isLoading,
+        onRefresh = { viewModel.refreshLocation() }
+    )
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(BgOffwhite)
-            .padding(horizontal = 24.dp, vertical = 16.dp),
+            .androidx.compose.material.pullrefresh.pullRefresh(pullState)
+            .padding(horizontal = 24.dp, vertical = 16.dp)
+    ) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Spacer(Modifier.weight(1f))
-            Text(
-                text = stringResource(R.string.tab_qibla),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = TextPrimary
-            )
-            Spacer(Modifier.weight(1f))
-            androidx.compose.material3.IconButton(onClick = { viewModel.refreshLocation() }) {
-                Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.qibla_refresh), tint = PrimaryBlue)
-            }
-        }
+        Text(
+            text = stringResource(R.string.tab_qibla),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = TextPrimary
+        )
         Spacer(Modifier.height(4.dp))
         Text(
             text = if (state.isLoading) stringResource(R.string.qibla_finding_location)
@@ -349,5 +349,14 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
                 }
             }
         }
+    }
+
+        androidx.compose.material.pullrefresh.PullRefreshIndicator(
+            refreshing = state.isLoading,
+            state = pullState,
+            backgroundColor = SurfaceWhite,
+            contentColor = PrimaryBlue,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
 }
