@@ -55,6 +55,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import android.app.Activity
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
@@ -74,7 +78,7 @@ import com.mawaqit.app.ui.theme.TextPrimary
 import kotlin.math.cos
 import kotlin.math.sin
 
-@OptIn(androidx.compose.material.ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -199,7 +203,7 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
         )
     }
 
-    val pullState = androidx.compose.material.pullrefresh.rememberPullRefreshState(
+    val pullState = rememberPullRefreshState(
         refreshing = state.isLoading,
         onRefresh = { viewModel.refreshLocation() }
     )
@@ -208,7 +212,7 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
         modifier = Modifier
             .fillMaxSize()
             .background(BgOffwhite)
-            .androidx.compose.material.pullrefresh.pullRefresh(pullState)
+            .pullRefresh(pullState)
             .padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
     Column(
@@ -351,7 +355,7 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
         }
     }
 
-        androidx.compose.material.pullrefresh.PullRefreshIndicator(
+        PullRefreshIndicator(
             refreshing = state.isLoading,
             state = pullState,
             backgroundColor = SurfaceWhite,
