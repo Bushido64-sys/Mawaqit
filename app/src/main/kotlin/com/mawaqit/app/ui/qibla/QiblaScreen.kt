@@ -40,6 +40,7 @@ import android.content.pm.PackageManager
 import android.location.LocationManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.launch
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.compose.runtime.LaunchedEffect
@@ -112,6 +113,18 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
         if (hasPermission) viewModel.refreshLocation()
     }
 
+    val locationSettingsResultLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val nowOn = try {
+            lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+        } catch (e: Exception) { true }
+        locationOn = nowOn
+        if (nowOn) viewModel.refreshLocation()
+    }
+
     fun enableLocationServices() {
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10_000).build()
         val settingsRequest = LocationSettingsRequest.Builder()
@@ -125,7 +138,7 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
                     locationOn = true
                     viewModel.refreshLocation()
                 } catch (e: ResolvableApiException) {
-                    runCatching { e.startResolutionForResult(context as Activity, 1001) }
+                    runCatching { locationSettingsResultLauncher.launch(e.intent) }
                 } catch (_: Exception) {
                     // user must enable manually — open system settings
                     runCatching {

@@ -7,6 +7,7 @@ import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,10 +29,12 @@ class LocationHelper @Inject constructor(
         val fusedClient = LocationServices.getFusedLocationProviderClient(context)
         return try {
             try {
-                fusedClient.getCurrentLocation(
-                    Priority.PRIORITY_HIGH_ACCURACY,
-                    CancellationTokenSource().token
-                ).await()
+                withTimeoutOrNull(10_000) {
+                    fusedClient.getCurrentLocation(
+                        Priority.PRIORITY_HIGH_ACCURACY,
+                        CancellationTokenSource().token
+                    ).await()
+                }
             } catch (e: Exception) {
                 // fresh fix failed (timeout, settings) → try the last-known position
                 fusedClient.lastLocation.await()

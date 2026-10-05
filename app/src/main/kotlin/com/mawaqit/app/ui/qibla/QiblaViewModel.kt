@@ -50,6 +50,18 @@ class QiblaViewModel @Inject constructor(
         }
     }
 
+    /** Immediate fallback Mecca, then correct to API-resolved coords async so UI never waits on network. */
+    private fun refreshMeccaInBackground() {
+        viewModelScope.launch {
+            val (meccaLat, meccaLon) = MeccaLocator.getMeccaLatLon()
+            val loc = _uiState.value
+            if (!loc.locationFailed && loc.latitude != 0.0) {
+                val b = QiblaCalculator.calculateQiblaBearing(loc.latitude, loc.longitude, meccaLat, meccaLon)
+                _uiState.value = loc.copy(qiblaBearing = b, needleRotation = ((b - loc.deviceHeading) + 360f) % 360f)
+            }
+        }
+    }
+
     /** Re-fetch GPS (used when permission/location is granted after the first visit). */
     fun refreshLocation() {
         _uiState.value = _uiState.value.copy(isLoading = true, locationFailed = false)
@@ -62,8 +74,8 @@ class QiblaViewModel @Inject constructor(
             if (location == null) {
                 _uiState.value = _uiState.value.copy(isLoading = false, locationFailed = true)
             } else {
-                val (meccaLat, meccaLon) = MeccaLocator.getMeccaLatLon()
-                val bearing = QiblaCalculator.calculateQiblaBearing(location.latitude, location.longitude, meccaLat, meccaLon)
+                val bearing = QiblaCalculator.calculateQiblaBearing(location.latitude, location.longitude)
+                refreshMeccaInBackground()
                 val name = try {
                     Geocoder(context).getFromLocation(location.latitude, location.longitude, 1)
                         ?.firstOrNull()?.locality ?: ""
