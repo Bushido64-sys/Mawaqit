@@ -145,7 +145,7 @@ The bearing shown is where to face as closely as reasonably possible.</string>
     <string name="settings_selected">Selected</string>
     <string name="settings_azan_volume">Azan Volume</string>
     <string name="settings_force_alarm">Force Alarm</string>
-    <string name="settings_force_alarm_desc">Duck other apps' audio while the adhan plays</string>
+    <string name="settings_force_alarm_desc">Duck other audio while the adhan plays</string>
     <string name="settings_reader_font_size">Reader Font Size</string>
     <string name="settings_about">About</string>
     <string name="settings_alarm_health">Alarm Health</string>
