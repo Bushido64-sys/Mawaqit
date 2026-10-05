@@ -86,7 +86,30 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     val locationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { grants ->
-        if (grants.values.any { it }) viewModel.useMyLocation()
+        if (grants.values.any { it }) {
+            // We have permission now — make sure device location services are on.
+            val req = com.google.android.gms.location.LocationRequest
+                .Builder(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, 10_000).build()
+            val sreq = com.google.android.gms.location.LocationSettingsRequest.Builder()
+                .addLocationRequest(req).setAlwaysShow(true).build()
+            com.google.android.gms.location.LocationServices
+                .getSettingsClient(androidx.compose.ui.platform.LocalContext.current)
+                .checkLocationSettings(sreq).addOnCompleteListener { task ->
+                    try {
+                        task.getResult(Exception::class.java)
+                        viewModel.useMyLocation()
+                    } catch (e: com.google.android.gms.common.api.ResolvableApiException) {
+                        runCatching {
+                            e.startResolutionForResult(
+                                androidx.compose.ui.platform.LocalContext.current as android.app.Activity,
+                                1002
+                            )
+                        }
+                    } catch (_: Exception) {
+                        viewModel.useMyLocation()
+                    }
+                }
+        }
     }
 
     // One-time notification permission (Android 13+) — azan banner needs it.
