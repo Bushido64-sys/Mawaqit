@@ -82,6 +82,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val homeContext = androidx.compose.ui.platform.LocalContext.current
 
     val locationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -93,7 +94,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
             val sreq = com.google.android.gms.location.LocationSettingsRequest.Builder()
                 .addLocationRequest(req).setAlwaysShow(true).build()
             com.google.android.gms.location.LocationServices
-                .getSettingsClient(androidx.compose.ui.platform.LocalContext.current)
+                .getSettingsClient(homeContext)
                 .checkLocationSettings(sreq).addOnCompleteListener { task ->
                     try {
                         task.getResult(Exception::class.java)
@@ -101,7 +102,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                     } catch (e: com.google.android.gms.common.api.ResolvableApiException) {
                         runCatching {
                             e.startResolutionForResult(
-                                androidx.compose.ui.platform.LocalContext.current as android.app.Activity,
+                                homeContext as android.app.Activity,
                                 1002
                             )
                         }
@@ -111,6 +112,8 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                 }
         }
     }
+
+    val homeContext = androidx.compose.ui.platform.LocalContext.current
 
     // One-time notification permission (Android 13+) — azan banner needs it.
     val notifLauncher = rememberLauncherForActivityResult(
@@ -124,7 +127,6 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
 
     // One-shot system "Turn on location" sheet on startup when app has
     // permission but device location services are off.
-    val homeContext = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) {
         val hasPerm = androidx.core.content.ContextCompat.checkSelfPermission(
             homeContext, android.Manifest.permission.ACCESS_FINE_LOCATION
