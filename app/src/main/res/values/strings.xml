@@ -115,7 +115,7 @@
     <string name="qibla_refresh">Refresh Qibla</string>
     <string name="qibla_aligned">Aligned with Qibla ✓</string>
     <string name="qibla_no_mag_title">Compass unavailable</string>
-    <string name="qibla_no_mag_body">Assalamu Alaikum! Your device has no magnetometer, so a live compass is not possible. On a dark night this Prophet's companions too prayed without knowing the Qiblah's direction, and he said: "So wherever you turn, there is the Face of Allah" (Jamiʿ at-Tirmidhi 345). The bearing shown is where to face as closely as you can.</string>
+    <string name="qibla_no_mag_body"><![CDATA[Assalamu Alaikum! Your device has no magnetometer, so a live compass is not possible. On a dark night this Prophet's companions too prayed without knowing the Qiblah's direction, and he said: "So wherever you turn, there is the Face of Allah" (Jamiʿ at-Tirmidhi 345). The bearing shown is where to face as closely as you can.]]></string>
     <string name="qibla_no_mag_ok">Okay</string>
     <string name="towards_mecca">° towards Mecca</string>
     <string name="qibla_accuracy_tip">Point your phone flat for best accuracy</string>
