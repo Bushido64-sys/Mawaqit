@@ -71,6 +71,10 @@ object PrefKeys {
     // Quran reader (PHASE-6.1) — mushaf card redesign
     const val READER_FONT_SCALE = "reader_font_scale" // Float multiplier 0.8–1.5
     const val READER_COACH_DONE = "reader_coach_done" // Boolean — PHASE-6.4 coach marks seen
+
+    // Azan playback (PHASE_8)
+    const val AZAN_VOLUME = "azan_volume"       // Float 0f..1f, default 1f
+    const val AZAN_FORCE_ALARM = "azan_force_alarm" // Boolean, default false
 }
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "mawaqit_prefs")
@@ -251,4 +255,35 @@ class PrefsRepository @Inject constructor(
     suspend fun setReaderCoachDone() {
         store.edit { it[booleanPreferencesKey(PrefKeys.READER_COACH_DONE)] = true }
     }
+
+    // ── Language (PHASE_8) ─────────────────────────────────────────────────
+
+    val appLanguage: Flow<String> =
+        store.data.map { it[stringPreferencesKey(PrefKeys.APP_LANGUAGE)] ?: "en" }
+
+    suspend fun setAppLanguage(language: String) {
+        store.edit { it[stringPreferencesKey(PrefKeys.APP_LANGUAGE)] = language }
+    }
+
+    // ── Azan playback (PHASE_8) ─────────────────────────────────────────────
+
+    val azanVolume: Flow<Float> =
+        store.data.map { it[floatPreferencesKey(PrefKeys.AZAN_VOLUME)] ?: 1.0f }
+
+    suspend fun setAzanVolume(volume: Float) {
+        store.edit { it[floatPreferencesKey(PrefKeys.AZAN_VOLUME)] = volume.coerceIn(0f, 1f) }
+    }
+
+    suspend fun getAzanVolumeOnce(): Float =
+        store.data.first()[floatPreferencesKey(PrefKeys.AZAN_VOLUME)] ?: 1.0f
+
+    val azanForceAlarm: Flow<Boolean> =
+        store.data.map { it[booleanPreferencesKey(PrefKeys.AZAN_FORCE_ALARM)] ?: false }
+
+    suspend fun setAzanForceAlarm(force: Boolean) {
+        store.edit { it[booleanPreferencesKey(PrefKeys.AZAN_FORCE_ALARM)] = force }
+    }
+
+    suspend fun getAzanForceAlarmOnce(): Boolean =
+        store.data.first()[booleanPreferencesKey(PrefKeys.AZAN_FORCE_ALARM)] ?: false
 }

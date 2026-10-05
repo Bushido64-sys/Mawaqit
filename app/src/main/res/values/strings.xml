@@ -139,6 +139,19 @@ The bearing shown is where to face as closely as reasonably possible.</string>
     <string name="settings_fix_now">Fix Now</string>
     <string name="settings_app_version">App Version</string>
     <string name="settings_prayer_times_by">Prayer times provided by</string>
+    <string name="settings_change">Change</string>
+    <string name="settings_preview">Preview</string>
+    <string name="settings_select">Select</string>
+    <string name="settings_selected">Selected</string>
+    <string name="settings_azan_volume">Azan Volume</string>
+    <string name="settings_force_alarm">Force Alarm</string>
+    <string name="settings_force_alarm_desc">Duck other apps' audio while the adhan plays</string>
+    <string name="settings_reader_font_size">Reader Font Size</string>
+    <string name="settings_about">About</string>
+    <string name="settings_alarm_health">Alarm Health</string>
+    <string name="settings_notifications_off">Notifications are off</string>
+    <string name="settings_exact_alarm_off">Exact alarms are off</string>
+    <string name="settings_gps_location">GPS location</string>
     <string name="settings_aladhan">AlAdhan.com</string>
     <!-- Azan options — NO madina entry: no such audio file in the MVP (RULES.md Rule 11) -->
     <string name="azan_default">Default Azan</string>
