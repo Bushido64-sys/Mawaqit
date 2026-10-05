@@ -32,6 +32,7 @@
 
     <string name="qibla_enable_button">لوکیشن آن کریں</string>
     <string name="qibla_refresh">قبلہ ریفریش کریں</string>
+    <string name="qibla_aligned">آپ قبلہ رُو ہیں ✓</string>
     <string name="qibla_no_mag_title">کمپاس دستیاب نہیں</string>
     <string name="qibla_no_mag_body">السلام علیکم! آپ کے ڈیوائس میں میگنیٹومیٹر نہیں ہے، اس لیے لائیو کمپاس کام نہیں کرے گا۔ دکھائی گئی سمت قبلہ کی ہے — نماز کے وقت اسی سمت منہ کریں۔</string>
     <string name="qibla_no_mag_ok">ٹھیک ہے</string>

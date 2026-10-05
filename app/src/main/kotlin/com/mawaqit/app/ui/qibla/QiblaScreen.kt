@@ -306,6 +306,27 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
             fontWeight = FontWeight.Bold,
             color = TextPrimary
         )
+        val aligned = hasMagnetometer && kotlin.math.min(
+            kotlin.math.abs(state.deviceHeading - state.qiblaBearing),
+            360f - kotlin.math.abs(state.deviceHeading - state.qiblaBearing)
+        ) <= 3f
+        if (aligned) {
+            Spacer(Modifier.height(16.dp))
+            androidx.compose.material3.Surface(
+                shape = RoundedCornerShape(50),
+                color = PrimaryGold,
+                tonalElevation = 0.dp,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.qibla_aligned),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
         Spacer(Modifier.height(20.dp))
         Card(
             shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),

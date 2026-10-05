@@ -31,7 +31,8 @@ data class QiblaUiState(
 class QiblaViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val locationHelper: LocationHelper,
-    private val compass: CompassSensorManager
+    private val compass: CompassSensorManager,
+    private val meccaLocator: MeccaLocator
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(QiblaUiState())
@@ -53,7 +54,7 @@ class QiblaViewModel @Inject constructor(
     /** Immediate fallback Mecca, then correct to API-resolved coords async so UI never waits on network. */
     private fun refreshMeccaInBackground() {
         viewModelScope.launch {
-            val (meccaLat, meccaLon) = MeccaLocator.getMeccaLatLon()
+            val (meccaLat, meccaLon) = meccaLocator.getMeccaLatLon()
             val loc = _uiState.value
             if (!loc.locationFailed && loc.latitude != 0.0) {
                 val b = QiblaCalculator.calculateQiblaBearing(loc.latitude, loc.longitude, meccaLat, meccaLon)
