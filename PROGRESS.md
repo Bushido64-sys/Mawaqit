@@ -5,7 +5,7 @@
 > A fresh AI session reads THIS file first and instantly knows what's done,
 > what's pending, and what to do next — no archaeology, no guessing.
 > The AI updates it at the end of every work session. If it's stale, that's a bug — fix it.
-> **Last updated: 2026-10-03 — [PHASE-4.5]+HOTFIX PASSED on device (calendar sheet opens, grid correct, chips+count+progress layout verified) → calendar detail UI reworked [f96ae04, build GREEN] → USER-PASSED. Next: PHASE_7 (Qibla) plan. APK: GitHub Actions auto-build on every push.**
+> **Last updated: 2026-10-03 — [PHASE-4.5]+HOTFIX PASSED on device (calendar sheet opens, grid correct, chips+count+progress layout verified) → calendar detail UI reworked [f96ae04, build GREEN] → USER-PASSED. Next: PHASE_8 (Settings). APK: GitHub Actions auto-build on every push.**
 
 ---
 
@@ -313,7 +313,7 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
 | 4 | Home screen UI | ✅ PASSED 2026-09-19 — user confirmed live rollover, gold current-prayer highlight, azan notification. Bonus fix: one-frame setup flash on cold start (needsLocation tri-state) |
 | 5 | Widget (Glance; lock-screen = opportunistic bonus) | ✅ PASSED — [PHASE-5.2] verified on device 2026-09-19 ("looks better than before") |
 | 6 | Quran (UmmahAPI — endpoints re-verified live in Sept 2026) | ✅ PASSED (incl. 6.1–6.5, APK from Actions) |
-| 7 | Qibla | not started |
+| 7 | Qibla | ✅ PASSED (popup build accepted; needle fallback on no-mag phones) |
 | 8 | Settings (DataStore, Urdu, per-app language) | not started |
 | 9 | Polish (splash: ONE card per launch, ~5s, bundled ≤4MB video) | not started |
 
