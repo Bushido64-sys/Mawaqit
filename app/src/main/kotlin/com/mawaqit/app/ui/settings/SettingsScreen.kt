@@ -75,7 +75,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         Text(
             stringResource(R.string.settings),
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Semibold
+            fontWeight = FontWeight.SemiBold
         )
         Spacer(Modifier.height(12.dp))
 
