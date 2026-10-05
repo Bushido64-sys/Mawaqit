@@ -19,11 +19,11 @@ import javax.inject.Singleton
 class MeccaLocator @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    private const val NOMINATIM_URL =
+    private val NOMINATIM_URL =
         "https://nominatim.openstreetmap.org/search?q=Mecca&format=json&limit=1"
 
-    private const val FALLBACK_LAT = 21.4225
-    private const val FALLBACK_LON = 39.8262
+    private val FALLBACK_LAT = 21.4225
+    private val FALLBACK_LON = 39.8262
 
     private val client by lazy { OkHttpClient() }
     private val gson by lazy { Gson() }
