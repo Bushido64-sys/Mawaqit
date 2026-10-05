@@ -24,12 +24,28 @@ class PrayerRepositoryImpl @Inject constructor(
 
     override suspend fun setLocation(latitude: Double, longitude: Double, cityName: String?) {
         prefs.saveLocation(latitude, longitude, cityName)
+        prefs.setLocationModeGps()
         prefs.setLastMonthFetched("") // invalidate the month marker
         db.prayerTimeDao().deleteAll() // old location's times are now wrong
     }
 
+    override suspend fun setManualLocation(city: String, country: String) {
+        prefs.setManualLocation(city, country)
+        prefs.setLastMonthFetched("")
+        db.prayerTimeDao().deleteAll()
+    }
+
+    override suspend fun setCalculationMethod(method: Int) {
+        prefs.setCalculationMethod(method)
+        prefs.setLastMonthFetched("")
+        db.prayerTimeDao().deleteAll()
+    }
+
     override suspend fun refreshIfNeeded(): Boolean {
-        val coords = prefs.getLocationOnce() ?: return false
+        val manual = prefs.getLocationModeOnce() == "MANUAL"
+        if (!manual && prefs.getLocationOnce() == null) return false
+        if (manual && prefs.getManualCityOnce() == null) return false
+        val coords = prefs.getLocationOnce() ?: (0.0 to 0.0)
         val ym = YearMonth.now()                      // toString() == "2026-09" (ISO)
         val monthPattern = "${ym}-%"                 // "2026-09-%" (ISO year-month prefix)
         if (prefs.getLastMonthFetchedOnce() == ym.toString() &&
@@ -37,13 +53,14 @@ class PrayerRepositoryImpl @Inject constructor(
         ) {
             return true
         }
+        val method = prefs.getCalculationMethodOnce()
         return try {
-            val response = api.getMonthlyCalendar(
-                year = ym.year,
-                month = ym.monthValue,
-                latitude = coords.first,
-                longitude = coords.second
-            )
+            val response = if (manual) {
+                val (city, country) = prefs.getManualCityOnce()!!
+                api.getMonthlyCalendarByCity(ym.year, ym.monthValue, city, country, method)
+            } else {
+                api.getMonthlyCalendar(ym.year, ym.monthValue, coords.first, coords.second, method)
+            }
             if (response.code != 200) return false    // body code, not just HTTP (API_REFERENCE.md)
             val days = response.data.orEmpty().mapNotNull { it.toEntity(coords) }
             if (days.isEmpty()) {
@@ -57,6 +74,9 @@ class PrayerRepositoryImpl @Inject constructor(
             false // offline / timeout → caller serves cache (data flow diagram)
         }
     }
+
+    override suspend fun hasSavedLocation(): Boolean =
+        prefs.getLocationOnce() != null || prefs.getManualCityOnce() != null
 
     override suspend fun getTodayPrayerTimes(): PrayerTimings? {
         val dao = db.prayerTimeDao()
@@ -90,7 +110,6 @@ class PrayerRepositoryImpl @Inject constructor(
 
     override fun cityName(): Flow<String?> = prefs.savedCityName
 
-    override suspend fun hasSavedLocation(): Boolean = prefs.getLocationOnce() != null
 
     // ── mappers ───────────────────────────────────────────────────────────────
 

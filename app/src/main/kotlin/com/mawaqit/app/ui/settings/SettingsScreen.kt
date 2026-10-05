@@ -56,12 +56,34 @@ import com.mawaqit.app.ui.theme.SurfaceWhite
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
+data class CalcMethod(val id: Int, val name: String)
+
+private val CALCULATION_METHODS = listOf(
+    CalcMethod(1, "University of Islamic Sciences, Karachi"),
+    CalcMethod(4, "Umm al-Qura, Makkah"),
+    CalcMethod(3, "Muslim World League"),
+    CalcMethod(2, "Islamic Society of North America (ISNA)"),
+    CalcMethod(5, "Egyptian General Authority of Survey"),
+    CalcMethod(13, "Diyanet, Turkey"),
+    CalcMethod(8, "Gulf Region"),
+    CalcMethod(15, "Moonsighting Committee Worldwide")
+)
+
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val methodId by viewModel.calculationMethod.collectAsStateWithLifecycle()
+    val countries by viewModel.countries.collectAsStateWithLifecycle()
+    val cities by viewModel.cities.collectAsStateWithLifecycle()
+    val placesLoading by viewModel.placesLoading.collectAsStateWithLifecycle()
+    val placesError by viewModel.placesError.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showAzanSheet by remember { mutableStateOf(false) }
+    var showLocationSheet by remember { mutableStateOf(false) }
+    var showMethodSheet by remember { mutableStateOf(false) }
+    var pickedCountry by remember { mutableStateOf<String?>(null) }
+    val stateMethod = methodId
 
     LaunchedEffect(Unit) { viewModel.refreshHealth() }
 
@@ -163,7 +185,8 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag))
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (state.appLanguage == tag) PrimaryGold else MaterialTheme.colorScheme.surfaceVariant
+                            containerColor = if (state.appLanguage == tag) PrimaryGold else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier.padding(end = 8.dp)
                     ) { Text(label) }
@@ -180,7 +203,8 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     Button(
                         onClick = { viewModel.setReaderFontScale(mult) },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (kotlin.math.abs(state.readerFontScale - mult) < 0.01f) PrimaryGold else MaterialTheme.colorScheme.surfaceVariant
+                            containerColor = if (kotlin.math.abs(state.readerFontScale - mult) < 0.01f) PrimaryGold else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier.padding(end = 8.dp)
                     ) { Text(label) }
@@ -198,7 +222,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(state.cityName ?: stringResource(R.string.settings_gps_location))
-                TextButton(onClick = viewModel::changeLocation, enabled = !state.locationUpdating) {
+                TextButton(onClick = { showLocationSheet = true }, enabled = !state.locationUpdating) {
                     Text(if (state.locationUpdating) "…" else stringResource(R.string.settings_change))
                 }
             }
@@ -206,10 +230,24 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         }
         Spacer(Modifier.height(12.dp))
 
-        // ── Calculation method (display-only) ────────────────────────────
+        // ── Calculation method ───────────────────────────────────────────
         SectionCard {
             Text(stringResource(R.string.settings_calculation_method), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-            Text(stringResource(R.string.settings_karachi_method), fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    CALCULATION_METHODS.firstOrNull { it.id == stateMethod }?.name
+                        ?: stringResource(R.string.settings_karachi_method),
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(top = 4.dp, end = 8.dp)
+                )
+                TextButton(onClick = { showMethodSheet = true }) {
+                    Text(stringResource(R.string.settings_change))
+                }
+            }
         }
         Spacer(Modifier.height(12.dp))
 
@@ -218,6 +256,67 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             Text(stringResource(R.string.settings_about), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             Text("${stringResource(R.string.settings_app_version)}: ${state.appVersion}", fontSize = 14.sp)
             Text("${stringResource(R.string.settings_prayer_times_by)} AlAdhan.com", fontSize = 14.sp)
+        }
+    }
+
+    if (showMethodSheet) {
+        val methodSheetState = rememberModalBottomSheetState()
+        ModalBottomSheet(onDismissRequest = { showMethodSheet = false }, sheetState = methodSheetState) {
+            Column(Modifier.padding(16.dp)) {
+                Text(stringResource(R.string.settings_calculation_method), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                CALCULATION_METHODS.forEach { m ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(m.name)
+                        TextButton(onClick = {
+                            viewModel.setCalculationMethod(m.id)
+                            showMethodSheet = false
+                        }) {
+                            Text(if (methodId == m.id) stringResource(R.string.settings_selected) else stringResource(R.string.settings_select))
+                        }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+            }
+        }
+    }
+
+    if (showLocationSheet) {
+        val locSheetState = rememberModalBottomSheetState()
+        ModalBottomSheet(onDismissRequest = { showLocationSheet = false; pickedCountry = null }, sheetState = locSheetState) {
+            Column(Modifier.padding(16.dp).height(420.dp).verticalScroll(rememberScrollState())) {
+                Text(stringResource(R.string.settings_location), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                TextButton(onClick = {
+                    showLocationSheet = false
+                    viewModel.changeLocation() // GPS auto-detect (existing flow)
+                }) { Text("Detect automatically (GPS)") }
+                if (pickedCountry == null) {
+                    LaunchedEffect(Unit) { viewModel.loadCountries() }
+                    if (placesLoading) Text("Loading…", fontSize = 13.sp)
+                    if (placesError != null) Text(placesError!!, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+                    countries.forEach { country ->
+                        TextButton(onClick = {
+                            pickedCountry = country
+                            viewModel.loadCities(country)
+                        }) { Text(country) }
+                    }
+                } else {
+                    TextButton(onClick = { pickedCountry = null }) { Text("← $pickedCountry") }
+                    if (placesLoading) Text("Loading…", fontSize = 13.sp)
+                    if (placesError != null) Text(placesError!!, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+                    cities.forEach { city ->
+                        TextButton(onClick = {
+                            viewModel.pickManualCity(city, pickedCountry!!)
+                            showLocationSheet = false
+                            pickedCountry = null
+                        }) { Text(city) }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+            }
         }
     }
 
@@ -238,7 +337,13 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                         Text(if (option == AzanOption.MAKKAH) stringResource(R.string.azan_makkah) else stringResource(R.string.azan_default))
                         Row {
                             TextButton(onClick = { viewModel.previewAzan(option) }) { Text(stringResource(R.string.settings_preview)) }
-                            Button(onClick = { viewModel.setSelectedAzan(option) }) {
+                            Button(
+                                onClick = { viewModel.setSelectedAzan(option) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (state.selectedAzan == option) PrimaryGold else MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                )
+                            ) {
                                 Text(if (state.selectedAzan == option) stringResource(R.string.settings_selected) else stringResource(R.string.settings_select))
                             }
                         }

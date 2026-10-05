@@ -24,12 +24,18 @@ annotation class AladhanRetrofit
 @Retention(AnnotationRetention.BINARY)
 annotation class UmmahRetrofit
 
+/** Name-tag for the countries/cities Retrofit client (PHASE-8.1). */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class CountriesNowRetrofit
+
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
     private const val ALADHAN_BASE_URL = "https://api.aladhan.com/v1/"
     private const val UMMAH_BASE_URL = "https://ummahapi.com/api/"
+    private const val COUNTRIES_NOW_BASE_URL = "https://countriesnow.space/"
 
     @Provides
     @Singleton
@@ -69,7 +75,22 @@ object NetworkModule {
     fun provideUmmahApiService(@UmmahRetrofit retrofit: Retrofit): UmmahApiService =
         retrofit.create(UmmahApiService::class.java)
 
-    // ⚠️ Both Retrofit Builders inject the SAME OkHttpClient — fine, because the
+    @CountriesNowRetrofit
+    @Provides
+    @Singleton
+    fun provideCountriesNowRetrofit(client: OkHttpClient): Retrofit =
+        Retrofit.Builder()
+            .baseUrl(COUNTRIES_NOW_BASE_URL)
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create(GsonBuilder().setLenient().create()))
+            .build()
+
+    @Provides
+    @Singleton
+    fun provideCountriesNowApiService(@CountriesNowRetrofit retrofit: Retrofit): com.mawaqit.app.data.api.CountriesNowApiService =
+        retrofit.create(com.mawaqit.app.data.api.CountriesNowApiService::class.java)
+
+    // ⚠️ All Retrofit Builders inject the SAME OkHttpClient — fine, because the
     // OkHttp client itself holds no baseUrl. Separated into distinct Retrofit
-    // instances only for the two base URLs (NetworkModule, PHASE_6).
+    // instances only for the distinct base URLs (NetworkModule, PHASE_6/8.1).
 }

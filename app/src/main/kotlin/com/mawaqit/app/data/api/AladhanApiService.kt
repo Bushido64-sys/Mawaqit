@@ -18,7 +18,18 @@ interface AladhanApiService {
         @Path("month") month: Int,
         @Query("latitude") latitude: Double,
         @Query("longitude") longitude: Double,
-        @Query("method") method: Int = 1,
+        @Query("method") method: Int,
+        @Query("school") school: Int = 1
+    ): AladhanCalendarResponse
+
+    /** PHASE-8.1 — monthly calendar by city name (manual location mode). */
+    @GET("calendarByCity/{year}/{month}")
+    suspend fun getMonthlyCalendarByCity(
+        @Path("year") year: Int,
+        @Path("month") month: Int,
+        @Query("city") city: String,
+        @Query("country") country: String,
+        @Query("method") method: Int,
         @Query("school") school: Int = 1
     ): AladhanCalendarResponse
 

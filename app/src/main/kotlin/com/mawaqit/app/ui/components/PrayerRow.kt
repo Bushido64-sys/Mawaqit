@@ -14,8 +14,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -30,8 +28,9 @@ import com.mawaqit.app.util.PrayerStatus
 
 /**
  * One prayer row (DESIGN.md §6 AgendaRow adapted + Settings switch row):
- * status icon · name · time · alarm toggle. Tap anywhere on the row toggles
+ * status icon · name · time. Tap anywhere on the row toggles
  * the prayed checkmark (PHASE_4 guidebook: "Tapping a prayer marks it as prayed").
+ * Alarm toggles moved to Settings (PHASE-8.1).
  *
  * [prayed] comes from the salah_log (authoritative); [status] is the clock
  * classification used only for the CURRENT highlight when not yet prayed.
@@ -42,10 +41,7 @@ fun PrayerRow(
     timeStr: String,
     status: PrayerStatus,
     prayed: Boolean,
-    alarmEnabled: Boolean,
-    alarmSwitchEnabled: Boolean,
     onTogglePrayed: (Boolean) -> Unit,
-    onToggleAlarm: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isCurrent = status == PrayerStatus.CURRENT && !prayed
@@ -93,16 +89,6 @@ fun PrayerRow(
             text = timeStr,
             style = MaterialTheme.typography.bodyLarge,
             color = if (prayed) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(Modifier.width(8.dp))
-        Switch(
-            checked = alarmEnabled,
-            onCheckedChange = onToggleAlarm,
-            enabled = alarmSwitchEnabled,
-            colors = SwitchDefaults.colors(
-                checkedTrackColor = MaterialTheme.colorScheme.primary,
-                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
         )
     }
 }

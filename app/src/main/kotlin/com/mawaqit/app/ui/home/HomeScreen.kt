@@ -318,10 +318,7 @@ private fun TimesContent(state: HomeUiState, viewModel: HomeViewModel) {
                 timeStr = timeStr,
                 status = statuses[prayer] ?: PrayerStatus.UPCOMING,
                 prayed = state.salahLog[prayer] == true,
-                alarmEnabled = state.alarmStates[prayer] ?: true,
-                alarmSwitchEnabled = true,
                 onTogglePrayed = { prayed -> viewModel.markPrayed(prayer, prayed) },
-                onToggleAlarm = { enabled -> viewModel.toggleAlarm(prayer, enabled) }
             )
             HorizontalDivider()
         }

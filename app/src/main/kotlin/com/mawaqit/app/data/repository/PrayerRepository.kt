@@ -16,6 +16,12 @@ interface PrayerRepository {
      */
     suspend fun setLocation(latitude: Double, longitude: Double, cityName: String?)
 
+    /** PHASE-8.1 — manual city entry mode; month fetches use calendarByCity. */
+    suspend fun setManualLocation(city: String, country: String)
+
+    /** PHASE-8.1 — change AlAdhan method id; invalidates the cache like a location change. */
+    suspend fun setCalculationMethod(method: Int)
+
     /**
      * Ensures the CURRENT month's data exists:
      *  - already fetched this month (pref) and rows exist → no-op, returns true

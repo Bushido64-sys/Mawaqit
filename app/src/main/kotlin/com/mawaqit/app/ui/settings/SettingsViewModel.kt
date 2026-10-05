@@ -45,6 +45,7 @@ class SettingsViewModel @Inject constructor(
     private val repository: PrayerRepository,
     private val locationHelper: LocationHelper,
     private val azanPlayer: com.mawaqit.app.alarm.AzanPlayer,
+    private val countriesApi: com.mawaqit.app.data.api.CountriesNowApiService,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
@@ -147,6 +148,73 @@ class SettingsViewModel @Inject constructor(
     fun setReaderFontScale(scale: Float) {
         viewModelScope.launch { prefs.setReaderFontScale(scale) }
     }
+
+    // ── Location (PHASE-8.1) ───────────────────────────────────────────────
+
+    private val _countries = MutableStateFlow<List<String>>(emptyList())
+    val countries: StateFlow<List<String>> = _countries
+
+    private val _cities = MutableStateFlow<List<String>>(emptyList())
+    val cities: StateFlow<List<String>> = _cities
+
+    private val _placesLoading = MutableStateFlow(false)
+    val placesLoading: StateFlow<Boolean> = _placesLoading
+
+    private val _placesError = MutableStateFlow<String?>(null)
+    val placesError: StateFlow<String?> = _placesError
+
+    fun loadCountries() {
+        viewModelScope.launch {
+            _placesLoading.value = true
+            _placesError.value = null
+            try {
+                val res = countriesApi.getCountries()
+                _countries.value = res.data.orEmpty().mapNotNull { it.country }.sorted()
+            } catch (_: Exception) {
+                _placesError.value = "Could not load countries"
+            }
+            _placesLoading.value = false
+        }
+    }
+
+    fun loadCities(country: String) {
+        viewModelScope.launch {
+            _placesLoading.value = true
+            _placesError.value = null
+            _cities.value = emptyList()
+            try {
+                val res = countriesApi.getCities(com.mawaqit.app.data.api.CountryRequest(country))
+                _cities.value = res.data.orEmpty().sorted()
+            } catch (_: Exception) {
+                _placesError.value = "Could not load cities"
+            }
+            _placesLoading.value = false
+        }
+    }
+
+    fun pickManualCity(city: String, country: String) {
+        viewModelScope.launch {
+            repository.setManualLocation(city, country)
+            _state.value = _state.value.copy(cityName = "$city, $country", locationError = null)
+        }
+    }
+
+    // ── Calculation method (PHASE-8.1) ─────────────────────────────────────
+
+    private val _calculationMethod = MutableStateFlow(1)
+    val calculationMethod: StateFlow<Int> = _calculationMethod
+
+    init {
+        viewModelScope.launch {
+            prefs.calculationMethod.collect { _calculationMethod.value = it }
+        }
+    }
+
+    fun setCalculationMethod(method: Int) {
+        viewModelScope.launch { repository.setCalculationMethod(method) }
+    }
+
+    // ── Old GPS-only changeLocation kept for auto-detect reuse ─────────────
 
     fun changeLocation() {
         viewModelScope.launch {

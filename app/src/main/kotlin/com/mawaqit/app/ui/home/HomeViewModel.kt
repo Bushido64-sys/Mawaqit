@@ -51,7 +51,6 @@ data class HomeUiState(
     val fromCache: Boolean = false,      // true → "cached data" banner
     val error: String? = null,
     val salahLog: Map<PrayerName, Boolean> = emptyMap(),   // prayed checkmarks
-    val alarmStates: Map<PrayerName, Boolean> = emptyMap(),// per-prayer alarm switches
     val dailyAyah: DailyAyah? = null,
     val widgetAdded: Boolean = false,     // ≥1 Mawaqit widget hosted (PHASE-5.1)
     val showWidgetPromo: Boolean = false, // promo card visible (never once dismissed/added)
@@ -92,7 +91,6 @@ class HomeViewModel @Inject constructor(
                 _state.update { it.copy(isLoading = false, needsLocation = true) } // show setup buttons
             }
         }
-        observeAlarmToggles()
         observeSalahLog()
         observeWidgetPromo()
         loadDailyAyah()
@@ -201,31 +199,6 @@ class HomeViewModel @Inject constructor(
                 }
                 _state.update { it.copy(salahLog = map) }
             }
-        }
-    }
-
-    // ── alarm toggles (same behavior as the Phase 3 test switches) ──────────
-
-    private fun observeAlarmToggles() {
-        viewModelScope.launch {
-            val flows = PrayerName.entries.map { prefs.alarmEnabledFlow(it) }
-            combine(flows) { values ->
-                val map = LinkedHashMap<PrayerName, Boolean>()
-                PrayerName.entries.forEachIndexed { index, prayer ->
-                    map[prayer] = values[index]
-                }
-                map
-            }.collect { map ->
-                _state.update { it.copy(alarmStates = map) }
-            }
-        }
-    }
-
-    /** Save the pref, then rebuild the whole 7-day alarm plan (arms + cancels). */
-    fun toggleAlarm(prayer: PrayerName, enabled: Boolean) {
-        viewModelScope.launch {
-            prefs.setAlarmEnabled(prayer, enabled)
-            refreshManager.refreshAlarmsFromCache()
         }
     }
 

@@ -29,6 +29,11 @@ object PrefKeys {
     const val SAVED_LONGITUDE = "saved_longitude"    // Float
     const val SAVED_CITY_NAME = "saved_city_name"    // String
     const val LOCATION_MODE   = "location_mode"      // "GPS" | "MANUAL"
+    const val MANUAL_CITY     = "manual_city"        // String — AlAdhan city name
+    const val MANUAL_COUNTRY  = "manual_country"     // String — AlAdhan country name
+
+    // Calculation method (PHASE-8.1) — AlAdhan method id, default 1 = Karachi
+    const val CALCULATION_METHOD = "calculation_method" // Int
 
     // Prayer times cache metadata
     const val LAST_MONTH_FETCHED = "last_month_fetched"  // "2026-09" (ISO year-month)
@@ -114,6 +119,43 @@ class PrefsRepository @Inject constructor(
         val lat = prefs[floatPreferencesKey(PrefKeys.SAVED_LATITUDE)]
         val lon = prefs[floatPreferencesKey(PrefKeys.SAVED_LONGITUDE)]
         return if (lat != null && lon != null) lat.toDouble() to lon.toDouble() else null
+    }
+
+    // ── Manual city mode (PHASE-8.1) ──────────────────────────────────────
+
+    suspend fun getLocationModeOnce(): String =
+        store.data.first()[stringPreferencesKey(PrefKeys.LOCATION_MODE)] ?: "GPS"
+
+    suspend fun getManualCityOnce(): Pair<String, String>? {
+        val p = store.data.first()
+        val city = p[stringPreferencesKey(PrefKeys.MANUAL_CITY)] ?: return null
+        val country = p[stringPreferencesKey(PrefKeys.MANUAL_COUNTRY)] ?: return null
+        return city to country
+    }
+
+    suspend fun setManualLocation(city: String, country: String) {
+        store.edit {
+            it[stringPreferencesKey(PrefKeys.LOCATION_MODE)] = "MANUAL"
+            it[stringPreferencesKey(PrefKeys.MANUAL_CITY)] = city
+            it[stringPreferencesKey(PrefKeys.MANUAL_COUNTRY)] = country
+            it[stringPreferencesKey(PrefKeys.SAVED_CITY_NAME)] = "$city, $country"
+        }
+    }
+
+    suspend fun setLocationModeGps() {
+        store.edit { it[stringPreferencesKey(PrefKeys.LOCATION_MODE)] = "GPS" }
+    }
+
+    // ── Calculation method (PHASE-8.1) ────────────────────────────────────
+
+    val calculationMethod: Flow<Int> =
+        store.data.map { it[intPreferencesKey(PrefKeys.CALCULATION_METHOD)] ?: 1 }
+
+    suspend fun getCalculationMethodOnce(): Int =
+        store.data.first()[intPreferencesKey(PrefKeys.CALCULATION_METHOD)] ?: 1
+
+    suspend fun setCalculationMethod(method: Int) {
+        store.edit { it[intPreferencesKey(PrefKeys.CALCULATION_METHOD)] = method }
     }
 
     // ── Monthly fetch metadata ──────────────────────────────────────────────
