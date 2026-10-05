@@ -220,11 +220,6 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
 
         Spacer(Modifier.height(20.dp))
         Text(
-            text = "Heading ${state.deviceHeading.toInt()}° · Qibla ${state.qiblaBearing.toInt()}°",
-            style = MaterialTheme.typography.bodySmall,
-            color = TextMuted
-        )
-        Text(
             text = if (state.locationFailed) "—" else "${state.qiblaBearing.toInt()}${stringResource(R.string.towards_mecca)}",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,

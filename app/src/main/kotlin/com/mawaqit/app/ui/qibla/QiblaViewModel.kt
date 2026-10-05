@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import com.mawaqit.app.util.CompassSensorManager
+import com.mawaqit.app.util.MeccaLocator
 import com.mawaqit.app.util.LocationHelper
 import com.mawaqit.app.util.QiblaCalculator
 
@@ -61,13 +62,15 @@ class QiblaViewModel @Inject constructor(
             if (location == null) {
                 _uiState.value = _uiState.value.copy(isLoading = false, locationFailed = true)
             } else {
-                val bearing = QiblaCalculator.calculateQiblaBearing(location.latitude, location.longitude)
+                val (meccaLat, meccaLon) = MeccaLocator.getMeccaLatLon()
+                val bearing = QiblaCalculator.calculateQiblaBearing(location.latitude, location.longitude, meccaLat, meccaLon)
                 val name = try {
                     Geocoder(context).getFromLocation(location.latitude, location.longitude, 1)
                         ?.firstOrNull()?.locality ?: ""
                 } catch (e: Exception) { "" }
                 _uiState.value = _uiState.value.copy(
                     qiblaBearing = bearing,
+                    needleRotation = ((bearing - _uiState.value.deviceHeading) + 360f) % 360f,
                     latitude = location.latitude,
                     longitude = location.longitude,
                     locationName = name,
