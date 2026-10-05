@@ -314,7 +314,7 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
 | 5 | Widget (Glance; lock-screen = opportunistic bonus) | ✅ PASSED — [PHASE-5.2] verified on device 2026-09-19 ("looks better than before") |
 | 6 | Quran (UmmahAPI — endpoints re-verified live in Sept 2026) | ✅ PASSED (incl. 6.1–6.5, APK from Actions) |
 | 7 | Qibla | ✅ PASSED (popup build accepted; needle fallback on no-mag phones) |
-| 8 | Settings (DataStore, Urdu, per-app language) | not started |
+| 8 | Settings (DataStore, Urdu, per-app language) | ✅ built, build GREEN — user phone test pending |
 | 9 | Polish (splash: ONE card per launch, ~5s, bundled ≤4MB video) | not started |
 
 ## USER'S RULES (non-negotiable — learned the hard way 😄)
@@ -391,6 +391,28 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
    responsive anchors MUST match real launcher cells (~70dp/cell).
 5. **Before ending any session:** update this file (status line, phases table, pending items).
 
+
+**PHASE-8 SETTINGS built (4034348, 2026-10-05, build GREEN after 3 fixes):**
+- Guidebook PHASE_8_SETTINGS.md patched pre-code: SettingsRepository dropped
+  (PrefsRepository reused — ponytail), AzanPlayer volume/force in spec.
+- PrefsRepository: APP_LANGUAGE flow/setter, AZAN_VOLUME (0..1f), AZAN_FORCE_ALARM
+  (+Once getters for AzanPlayer's runBlocking read).
+- AzanPlayer: setVolume(v,v); azanForceAlarm ON → audio focus
+  (AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK — ducks other players), released on
+  stop/complete/failure. AzanService picks it up via Hilt constructor.
+- SettingsScreen + SettingsViewModel (ui/settings/): 5 alarm switches (toggle →
+  prefs + AlarmRefreshManager.refreshAlarmsFromCache), Azan bottom sheet (2
+  options + Preview ~5s via VM → AzanPlayer on Dispatchers.IO), volume Slider,
+  Force alarm switch, EN/اردو (setApplicationLocales), Reader font pills
+  (0.85/1.0/1.15/1.3), Location + Change (LocationHelper → repository.setLocation;
+  Home reloads on tab revisit), Calculation method (display), Alarm Health card
+  (notif/exact/battery, auto-hides when healthy, re-checked on open), About w/
+  BuildConfig.GIT_SHA.
+- Nav: MawaqitNavGraph "settings" → SettingsScreen; ComingSoonScreen retired.
+- Build fixes: (1) raw apostrophe in strings.xml (aapt invalid escape — same
+  family as Phase 7: keep apostrophes OUT of strings.xml); (2) FontWeight.
+  SemiBold → SemiBold (only SemiBold exists); (3) first check-runs poll raced
+  the run start (empty JSON).
 
 ## PHASE-7 BUILD/DEBUG LOG (2026-10-05 — CLOSED)
 - Phone-side findings: NO TYPE_MAGNETIC_FIELD, NO TYPE_ROTATION_VECTOR, NO TYPE_GEOMAGNETIC_ROTATION on this device → true compass physically impossible. Handled with dialog.
@@ -528,7 +550,11 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
   as manual fallback (fix recipes: hard refresh / Rebuild Container / recreate).
   **Next: user downloads Actions APK → runs the 9-check PHASE-6 list → Phase 6
   verdict → Phase 7 (Qibla) on explicit OK.**
-- **2026-10-05 — Session 16 (Phase 7 close):** Qibla phase fixed through: (pull-to-refresh over scrollable Column), CDATA/apostrophe-free qibla_no_mag_body string (aapt fix), startup location-settings sheet via SettingsClient + ResolvableApiException both at grant-time and at HomeScreen init, M2 material dep added. Phase 7 closed; Phase 8 next.
+ - **2026-10-05 — Session 17 (PHASE-8):** Settings screen + VM built; guidebook
+   patched pre-code (SettingsRepository dropped — PrefsRepository reused).
+   3 build fixes (apostrophe in strings.xml, FontWeight.SemiBold, poll race).
+   Build GREEN (4034348). NOT yet phone-tested. **Next: user phone-tests Settings → then PHASE-9.**
+ - **2026-10-05 — Session 16 (Phase 7 close):** Qibla phase fixed through: (pull-to-refresh over scrollable Column), CDATA/apostrophe-free qibla_no_mag_body string (aapt fix), startup location-settings sheet via SettingsClient + ResolvableApiException both at grant-time and at HomeScreen init, M2 material dep added. Phase 7 closed; Phase 8 next.
 - **2026-09-20 — Session 12:** Codespace became unusable → APK builds moved to
   GitHub Actions auto-build on push (KEY DECISIONS updated; push 5356fe0 fired
   build #1). Build #1 RED: expression-body `return`s in AyahRepository → fixed
