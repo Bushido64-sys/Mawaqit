@@ -314,7 +314,7 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
 | 5 | Widget (Glance; lock-screen = opportunistic bonus) | ✅ PASSED — [PHASE-5.2] verified on device 2026-09-19 ("looks better than before") |
 | 6 | Quran (UmmahAPI — endpoints re-verified live in Sept 2026) | ✅ PASSED (incl. 6.1–6.5, APK from Actions) |
 | 7 | Qibla | ✅ PASSED (popup build accepted; needle fallback on no-mag phones) |
-| 8 | Settings (DataStore, Urdu, per-app language) | ✅ built, build GREEN — user phone test pending |
+| 8 | Settings (DataStore, Urdu, per-app language) | ✅ PASSED — user tested 2026-10-05 (green build, 8.1 polish pass included: city list fix, search bars, health-card resume refresh) |
 | 9 | Polish (splash: ONE card per launch, ~5s, bundled ≤4MB video) | not started |
 
 ## USER'S RULES (non-negotiable — learned the hard way 😄)
@@ -553,7 +553,7 @@ confirmed closed. Phase 3 = fully closed. Next: PHASE 4.**
  - **2026-10-05 — Session 17 (PHASE-8):** Settings screen + VM built; guidebook
    patched pre-code (SettingsRepository dropped — PrefsRepository reused).
    3 build fixes (apostrophe in strings.xml, FontWeight.SemiBold, poll race).
-   Build GREEN (4034348). NOT yet phone-tested. **Next: user phone-tests Settings → then PHASE-9.**
+   Build GREEN; Phase 8 + 8.1 PASSED user test 2026-10-05 (final build f956549). Phase 9 next.
  - **2026-10-05 — Session 16 (Phase 7 close):** Qibla phase fixed through: (pull-to-refresh over scrollable Column), CDATA/apostrophe-free qibla_no_mag_body string (aapt fix), startup location-settings sheet via SettingsClient + ResolvableApiException both at grant-time and at HomeScreen init, M2 material dep added. Phase 7 closed; Phase 8 next.
 - **2026-09-20 — Session 12:** Codespace became unusable → APK builds moved to
   GitHub Actions auto-build on push (KEY DECISIONS updated; push 5356fe0 fired
@@ -607,4 +607,4 @@ at the end of the session. Don't start any new phase without my explicit OK.
 ```
 
 That's it. Those 3 reads = full context, every time. 🚀
-- **2026-10-05 — Session 18 (PHASE-8.1):** Home alarm switches removed (Settings owns them); unselected chip text now black on surfaceVariant; Location sheet = GPS auto-detect OR country→city via CountriesNowApiService (calendarByCity monthly fetch in MANUAL mode); Calculation method picker (8 methods, pref + cache invalidation + Home auto-reload). Build GREEN (8090254). User phone test pending.
+- **2026-10-05 — Session 18 (PHASE-8.1):** Home alarm switches removed (Settings owns them); unselected chip text now black on surfaceVariant; Location sheet = GPS auto-detect OR country→city via CountriesNowApiService (calendarByCity monthly fetch in MANUAL mode); Calculation method picker (8 methods, pref + cache invalidation + Home auto-reload). 
