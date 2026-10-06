@@ -151,11 +151,10 @@ class SettingsViewModel @Inject constructor(
 
     // ── Location (PHASE-8.1) ───────────────────────────────────────────────
 
-    private val _countries = MutableStateFlow<List<String>>(emptyList())
-    val countries: StateFlow<List<String>> = _countries
+    private val _countries = MutableStateFlow<List<Country>>(emptyList())
+    val countries: StateFlow<List<Country>> = _countries
 
-    private val _cities = MutableStateFlow<List<String>>(emptyList())
-    val cities: StateFlow<List<String>> = _cities
+    data class Country(val name: String, val cities: List<String>)
 
     private val _placesLoading = MutableStateFlow(false)
     val placesLoading: StateFlow<Boolean> = _placesLoading
@@ -163,13 +162,18 @@ class SettingsViewModel @Inject constructor(
     private val _placesError = MutableStateFlow<String?>(null)
     val placesError: StateFlow<String?> = _placesError
 
+    private val _cities = MutableStateFlow<List<String>>(emptyList())
+    val cities: StateFlow<List<String>> = _cities
+
     fun loadCountries() {
         viewModelScope.launch {
             _placesLoading.value = true
             _placesError.value = null
             try {
                 val res = countriesApi.getCountries()
-                _countries.value = res.data.orEmpty().mapNotNull { it.country }.sorted()
+                _countries.value = res.data.orEmpty()
+                    .mapNotNull { c -> c.country?.let { Country(it, c.cities.orEmpty()) } }
+                    .sortedBy { it.name }
             } catch (_: Exception) {
                 _placesError.value = "Could not load countries"
             }
@@ -178,18 +182,8 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun loadCities(country: String) {
-        viewModelScope.launch {
-            _placesLoading.value = true
-            _placesError.value = null
-            _cities.value = emptyList()
-            try {
-                val res = countriesApi.getCities(com.mawaqit.app.data.api.CountryRequest(country))
-                _cities.value = res.data.orEmpty().sorted()
-            } catch (_: Exception) {
-                _placesError.value = "Could not load cities"
-            }
-            _placesLoading.value = false
-        }
+        _cities.value = _countries.value.firstOrNull { it.name == country }?.cities.orEmpty()
+        _placesError.value = null
     }
 
     fun pickManualCity(city: String, country: String) {

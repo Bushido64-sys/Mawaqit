@@ -83,9 +83,28 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     var showLocationSheet by remember { mutableStateOf(false) }
     var showMethodSheet by remember { mutableStateOf(false) }
     var pickedCountry by remember { mutableStateOf<String?>(null) }
+    var countryQuery by remember { mutableStateOf("") }
+    var cityQuery by remember { mutableStateOf("") }
     val stateMethod = methodId
+    val filteredCountries = remember(countries, countryQuery) {
+        countries.filter { it.name.contains(countryQuery, ignoreCase = true) }
+    }
+    val filteredCities = remember(cities, cityQuery) {
+        cities.filter { it.contains(cityQuery, ignoreCase = true) }
+    }
 
     LaunchedEffect(Unit) { viewModel.refreshHealth() }
+
+    // Fix Now opens system pages — re-check health the moment the user returns,
+    // so the card updates without leaving the Settings tab (user report).
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) viewModel.refreshHealth()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Column(
         modifier = Modifier
@@ -287,32 +306,53 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     if (showLocationSheet) {
         val locSheetState = rememberModalBottomSheetState()
         ModalBottomSheet(onDismissRequest = { showLocationSheet = false; pickedCountry = null }, sheetState = locSheetState) {
-            Column(Modifier.padding(16.dp).height(420.dp).verticalScroll(rememberScrollState())) {
-                Text(stringResource(R.string.settings_location), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            Column(Modifier.padding(16.dp).height(480.dp).verticalScroll(rememberScrollState())) {
+                Text(stringResource(R.string.settings_location), fontWeight = FontWeight.SemiBold, fontSize = 18.sp)
                 TextButton(onClick = {
                     showLocationSheet = false
                     viewModel.changeLocation() // GPS auto-detect (existing flow)
-                }) { Text("Detect automatically (GPS)") }
+                }) { Text("Detect automatically (GPS)", fontSize = 16.sp) }
                 if (pickedCountry == null) {
                     LaunchedEffect(Unit) { viewModel.loadCountries() }
-                    if (placesLoading) Text("Loading…", fontSize = 13.sp)
-                    if (placesError != null) Text(placesError!!, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
-                    countries.forEach { country ->
-                        TextButton(onClick = {
-                            pickedCountry = country
-                            viewModel.loadCities(country)
-                        }) { Text(country) }
+                    androidx.compose.material3.OutlinedTextField(
+                        value = countryQuery,
+                        onValueChange = { countryQuery = it },
+                        placeholder = { Text("Search country") },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        singleLine = true
+                    )
+                    if (placesLoading) Text("Loading…", fontSize = 14.sp)
+                    if (placesError != null) Text(placesError!!, color = MaterialTheme.colorScheme.error, fontSize = 14.sp)
+                    filteredCountries.forEach { country ->
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                pickedCountry = country.name
+                                cityQuery = ""
+                                viewModel.loadCities(country.name)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(country.name, fontSize = 17.sp) }
                     }
                 } else {
-                    TextButton(onClick = { pickedCountry = null }) { Text("← $pickedCountry") }
-                    if (placesLoading) Text("Loading…", fontSize = 13.sp)
-                    if (placesError != null) Text(placesError!!, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
-                    cities.forEach { city ->
-                        TextButton(onClick = {
-                            viewModel.pickManualCity(city, pickedCountry!!)
-                            showLocationSheet = false
-                            pickedCountry = null
-                        }) { Text(city) }
+                    TextButton(onClick = { pickedCountry = null; cityQuery = "" }) { Text("← $pickedCountry", fontSize = 16.sp) }
+                    androidx.compose.material3.OutlinedTextField(
+                        value = cityQuery,
+                        onValueChange = { cityQuery = it },
+                        placeholder = { Text("Search city") },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        singleLine = true
+                    )
+                    if (cities.isEmpty() && !placesLoading) Text("No cities found", fontSize = 14.sp)
+                    filteredCities.forEach { city ->
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                viewModel.pickManualCity(city, pickedCountry!!)
+                                showLocationSheet = false
+                                pickedCountry = null
+                                cityQuery = ""
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(city, fontSize = 17.sp) }
                     }
                 }
                 Spacer(Modifier.height(16.dp))
