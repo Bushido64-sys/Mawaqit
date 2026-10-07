@@ -157,6 +157,40 @@ The bearing shown is where to face as closely as reasonably possible.</string>
     <string name="azan_default">Default Azan</string>
     <string name="azan_makkah">Makkah Azan</string>
 
+    <!-- Splash cards (PHASE_9) -->
+    <string name="splash_card1_h">Send Blessings Upon the Prophet ﷺ</string>
+    <string name="splash_card1_d">Whoever sends one blessing upon me, Allah sends ten blessings upon him.</string>
+    <string name="splash_card1_r">— Sahih Muslim 408</string>
+    <string name="splash_card2_h">Guard Your Prayers</string>
+    <string name="splash_card2_d">Indeed, prayer has been decreed upon the believers a decree of specified times.</string>
+    <string name="splash_card2_r">— Surah An-Nisa, 4:103</string>
+    <string name="splash_card3_h">SubhanAllah — Glory be to Allah</string>
+    <string name="splash_card3_d">To Him belongs whatever is in the heavens and whatever is in the earth.</string>
+    <string name="splash_card3_r">— Surah Al-Baqarah, 2:255</string>
+    <string name="splash_card4_h">Remember Allah Often</string>
+    <string name="splash_card4_d">Verily, in the remembrance of Allah do hearts find rest.</string>
+    <string name="splash_card4_r">— Surah Ar-Ra\'d, 13:28</string>
+    <string name="splash_card5_h">Rise for Fajr</string>
+    <string name="splash_card5_d">The two Sunnah rak\'ahs of Fajr are better than this world and all it contains.</string>
+    <string name="splash_card5_r">— Sahih Muslim 725</string>
+
+    <!-- Onboarding (PHASE_9) -->
+    <string name="onboard_page2_title">Where are you?</string>
+    <string name="onboard_page2_body">We use your location to calculate accurate prayer times for your city. You can also type it in manually.</string>
+    <string name="onboard_page3_title">Choose your language</string>
+    <string name="onboard_page3_body">The Quran text is always Arabic — pick the language for translations and the app.</string>
+    <string name="onboard_page4_title">Pick your Adhan</string>
+    <string name="onboard_page4_body">Tap a voice to hear a short preview. Fajr always uses the special Fajr Adhan.</string>
+    <string name="onboard_page5_title">You are all set</string>
+    <string name="onboard_page5_body">May Allah accept your prayers.</string>
+    <string name="onboard_detect">Detect my location</string>
+    <string name="onboard_city_hint">City (e.g. Karachi)</string>
+    <string name="onboard_country_hint">Country (e.g. Pakistan)</string>
+    <string name="onboard_skip">Skip</string>
+    <string name="onboard_continue">Continue</string>
+    <string name="onboard_allow_notifs">Allow notifications</string>
+    <string name="onboard_lets_roll">Let\'s Roll</string>
+
     <!-- Onboarding -->
     <string name="onboarding_welcome_title">Assalamu Alaikum</string>
     <string name="onboarding_welcome_subtitle">Stay connected to your prayers with accurate Salah times and Azan alarms.</string>

@@ -158,6 +158,25 @@ class PrefsRepository @Inject constructor(
         store.edit { it[intPreferencesKey(PrefKeys.CALCULATION_METHOD)] = method }
     }
 
+    // ── Splash / onboarding (PHASE-9) ─────────────────────────────────────
+
+    suspend fun getSplashCardIndexOnce(): Int =
+        store.data.first()[intPreferencesKey(PrefKeys.SPLASH_CARD_INDEX)] ?: 0
+
+    suspend fun setSplashCardIndex(index: Int) {
+        store.edit { it[intPreferencesKey(PrefKeys.SPLASH_CARD_INDEX)] = index }
+    }
+
+    val onboardingComplete: Flow<Boolean> =
+        store.data.map { it[booleanPreferencesKey(PrefKeys.ONBOARDING_COMPLETE)] ?: false }
+
+    suspend fun getOnboardingCompleteOnce(): Boolean =
+        store.data.first()[booleanPreferencesKey(PrefKeys.ONBOARDING_COMPLETE)] ?: false
+
+    suspend fun setOnboardingComplete(done: Boolean) {
+        store.edit { it[booleanPreferencesKey(PrefKeys.ONBOARDING_COMPLETE)] = done }
+    }
+
     // ── Monthly fetch metadata ──────────────────────────────────────────────
     val lastMonthFetched: Flow<String?> =
         store.data.map { it[stringPreferencesKey(PrefKeys.LAST_MONTH_FETCHED)] }
