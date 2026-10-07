@@ -222,6 +222,7 @@ fun QiblaScreen(viewModel: QiblaViewModel = hiltViewModel()) {
             .verticalScroll(androidx.compose.foundation.rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        com.mawaqit.app.ui.components.OrnamentHeader()
         Text(
             text = stringResource(R.string.tab_qibla),
             style = MaterialTheme.typography.titleMedium,

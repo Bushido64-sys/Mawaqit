@@ -267,6 +267,7 @@ private fun TimesContent(state: HomeUiState, viewModel: HomeViewModel) {
             .padding(horizontal = 16.dp)
     ) {
         Spacer(Modifier.height(8.dp))
+        com.mawaqit.app.ui.components.OrnamentHeader()
         Header(state)
 
         if (state.fromCache) {

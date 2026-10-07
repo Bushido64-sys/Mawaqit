@@ -44,6 +44,7 @@ import kotlin.math.absoluteValue
 @Composable
 fun SplashScreen(
     prefs: PrefsRepository,
+    longSplash: Boolean = false,
     onSplashComplete: () -> Unit
 ) {
     data class Card(val h: Int, val d: Int, val r: Int)
@@ -71,7 +72,7 @@ fun SplashScreen(
         index = stored % cards.size
         prefs.setSplashCardIndex((stored + 1) % cards.size)
         alpha = 1f
-        delay(4200)
+        delay(if (longSplash) 8600 else 4200)
         alpha = 0f
         delay(800)
         finish()

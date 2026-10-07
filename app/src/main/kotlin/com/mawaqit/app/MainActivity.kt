@@ -42,11 +42,17 @@ class MainActivity : AppCompatActivity() {
                 ) {
                     val navController = rememberNavController()
                     val scope = rememberCoroutineScope()
+                    // Onboarding already done? Splash then plays longer with a
+                    // muted background video (user request, PHASE-9.1).
+                    var onboardingDone by remember { mutableStateOf<Boolean?>(null) }
+                    androidx.compose.runtime.LaunchedEffect(Unit) {
+                        onboardingDone = prefs.getOnboardingCompleteOnce()
+                    }
+                    onboardingDone?.let { done ->
                     androidx.navigation.compose.NavHost(navController = navController, startDestination = "splash") {
                         composable("splash") {
-                            SplashScreen(prefs = prefs) {
+                            SplashScreen(prefs = prefs, longSplash = done) {
                                 scope.launch {
-                                    val done = prefs.getOnboardingCompleteOnce()
                                     navController.navigate(if (done) "main" else "onboarding") {
                                         popUpTo("splash") { inclusive = true }
                                     }
@@ -63,6 +69,7 @@ class MainActivity : AppCompatActivity() {
                         composable("main") {
                             MawaqitNavGraph(rememberNavController())
                         }
+                    }
                     }
                 }
             }

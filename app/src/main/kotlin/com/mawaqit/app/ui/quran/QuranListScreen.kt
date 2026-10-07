@@ -270,6 +270,7 @@ private fun SurahList(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 16.dp)
     ) {
+        item { com.mawaqit.app.ui.components.OrnamentHeader() }
         items(surahs, key = { it.number }) { surah ->
             SurahRow(
                 surah = surah,

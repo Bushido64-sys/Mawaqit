@@ -52,6 +52,7 @@ import com.mawaqit.app.R
 import com.mawaqit.app.data.model.PrayerName
 import com.mawaqit.app.data.prefs.AzanOption
 import com.mawaqit.app.ui.theme.PrimaryGold
+import com.mawaqit.app.ui.components.OrnamentHeader
 import com.mawaqit.app.ui.theme.SurfaceWhite
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -113,6 +114,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
+        OrnamentHeader()
         Text(
             stringResource(R.string.settings),
             style = MaterialTheme.typography.titleLarge,
