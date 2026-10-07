@@ -18,6 +18,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -48,7 +50,8 @@ class MainActivity : AppCompatActivity() {
                     androidx.compose.runtime.LaunchedEffect(Unit) {
                         onboardingDone = prefs.getOnboardingCompleteOnce()
                     }
-                    onboardingDone?.let { done ->
+                    val done = onboardingDone
+                    if (done != null) {
                     androidx.navigation.compose.NavHost(navController = navController, startDestination = "splash") {
                         composable("splash") {
                             SplashScreen(prefs = prefs, longSplash = done) {
