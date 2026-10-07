@@ -62,7 +62,7 @@ fun WheelPicker(
                 Text(
                     items[i],
                     fontSize = if (center) 18.sp else 15.sp,
-                    color = if (center) com.mawaqit.app.ui.theme.PrimaryBlue else MaterialTheme.colorScheme.outline,
+                    color = if (center) PrimaryGold else MaterialTheme.colorScheme.outline,
                     textAlign = TextAlign.Center
                 )
             }
@@ -73,8 +73,8 @@ fun WheelPicker(
         ) {
             val y1 = 0f
             val y2 = size.height
-            drawLine(color = com.mawaqit.app.ui.theme.PrimaryBlue, start = androidx.compose.ui.geometry.Offset(0f, y1), end = androidx.compose.ui.geometry.Offset(size.width, y1), strokeWidth = 2f)
-            drawLine(color = com.mawaqit.app.ui.theme.PrimaryBlue, start = androidx.compose.ui.geometry.Offset(0f, y2), end = androidx.compose.ui.geometry.Offset(size.width, y2), strokeWidth = 2f)
+            drawLine(color = PrimaryGold, start = androidx.compose.ui.geometry.Offset(0f, y1), end = androidx.compose.ui.geometry.Offset(size.width, y1), strokeWidth = 2f)
+            drawLine(color = PrimaryGold, start = androidx.compose.ui.geometry.Offset(0f, y2), end = androidx.compose.ui.geometry.Offset(size.width, y2), strokeWidth = 2f)
         }
     }
 }
