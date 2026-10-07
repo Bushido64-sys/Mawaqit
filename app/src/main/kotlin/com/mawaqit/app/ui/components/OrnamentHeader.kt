@@ -16,7 +16,7 @@ import com.mawaqit.app.ui.theme.PrimaryGold
 
 /** ── ✦ ── centered gold star with horizontal rules (PHASE-9.1 header ornament). */
 @Composable
-fun OrnamentHeader(modifier: Modifier = Modifier) {
+fun OrnamentHeader(modifier: Modifier = Modifier, accent: androidx.compose.ui.graphics.Color = PrimaryGold) {
     Row(
         modifier = modifier.fillMaxWidth().height(40.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -25,7 +25,7 @@ fun OrnamentHeader(modifier: Modifier = Modifier) {
             Modifier.weight(1f).height(1.dp).background(MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
         )
         Spacer(Modifier.width(12.dp))
-        Text("✦", color = PrimaryGold)
+        Text("✦", color = accent)
         Spacer(Modifier.width(12.dp))
         androidx.compose.foundation.layout.Box(
             Modifier.weight(1f).height(1.dp).background(MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))

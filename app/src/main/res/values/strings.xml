@@ -175,7 +175,7 @@ The bearing shown is where to face as closely as reasonably possible.</string>
     <string name="splash_card5_r">— Sahih Muslim 725</string>
 
     <!-- Onboarding (PHASE_9) -->
-    <string name="onboard_page2_title">Where are you?</string>
+    <string name="onboard_page2_title">Where are you from?</string>
     <string name="onboard_page2_body">We use your location to calculate accurate prayer times for your city. You can also type it in manually.</string>
     <string name="onboard_page3_title">Choose your language</string>
     <string name="onboard_page3_body">The Quran text is always Arabic — pick the language for translations and the app.</string>
@@ -189,7 +189,7 @@ The bearing shown is where to face as closely as reasonably possible.</string>
     <string name="onboard_skip">Skip</string>
     <string name="onboard_continue">Continue</string>
     <string name="onboard_allow_notifs">Allow notifications</string>
-    <string name="onboard_lets_roll">Let\'s Roll</string>
+    <string name="onboard_lets_roll">Recite Bismillah</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome_title">Assalamu Alaikum</string>

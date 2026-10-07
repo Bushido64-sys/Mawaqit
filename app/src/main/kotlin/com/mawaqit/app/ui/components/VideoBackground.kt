@@ -16,8 +16,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import android.graphics.SurfaceTexture
+import android.media.MediaPlayer
 import android.net.Uri
-import android.widget.VideoView
+import android.view.Surface
+import android.view.TextureView
+import androidx.compose.foundation.layout.BoxWithConstraints
 import com.mawaqit.app.ui.theme.SplashGradientEnd
 import com.mawaqit.app.ui.theme.SplashGradientStart
 
@@ -47,33 +51,31 @@ fun VideoBackground(
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         if (videoResId != 0) {
             androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
-                var videoW by remember { mutableStateOf(0) }
-                var videoH by remember { mutableStateOf(0) }
+                val mediaPlayer = remember { androidx.compose.runtime.mutableStateOf<MediaPlayer?>(null) }
                 AndroidView(
                     factory = { ctx ->
-                        VideoView(ctx).apply {
-                            setVideoURI(Uri.parse("android.resource://${ctx.packageName}/$videoResId"))
-                            setOnPreparedListener { mp ->
-                                mp.isLooping = true
-                                if (muted) mp.setVolume(0f, 0f)
-                                videoW = mp.videoWidth
-                                videoH = mp.videoHeight
-                                start()
+                        TextureView(ctx).also { tv ->
+                            tv.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                                override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
+                                    val mp = MediaPlayer()
+                                    mp.setDataSource(ctx, Uri.parse("android.resource://${ctx.packageName}/$videoResId"))
+                                    mp.setSurface(Surface(st))
+                                    mp.setVolume(if (muted) 0f else 1f, if (muted) 0f else 1f)
+                                    mp.setOnPreparedListener { it.start(); it.isLooping = true }
+                                    mp.prepareAsync()
+                                    mediaPlayer.value = mp
+                                }
+                                override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) {}
+                                override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
+                                    mediaPlayer.value?.run { try { stop(); release() } catch (_: Exception) {} }
+                                    mediaPlayer.value = null
+                                    return true
+                                }
+                                override fun onSurfaceTextureUpdated(st: SurfaceTexture) {}
                             }
                         }
                     },
-                    modifier = Modifier
-                        .let {
-                            val screenAspect = maxWidth.value / maxHeight.value
-                            val videoAspect = if (videoW > 0 && videoH > 0) videoW.toFloat() / videoH else screenAspect
-                            return@let if (videoAspect > screenAspect) {
-                                // video wider → match height, overflow width
-                                Modifier.height(maxHeight).width(maxHeight * videoAspect)
-                            } else {
-                                // video taller → match width, overflow height
-                                Modifier.width(maxWidth).height(maxWidth / videoAspect)
-                            }
-                        }
+                    modifier = Modifier.fillMaxSize()
                 )
             }
         } else {

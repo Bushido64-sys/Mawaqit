@@ -26,6 +26,9 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.interaction.collectIsCorePressAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -87,27 +90,27 @@ fun OnboardingScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            com.mawaqit.app.ui.components.OrnamentHeader()
+            com.mawaqit.app.ui.components.OrnamentHeader(accent = com.mawaqit.app.ui.theme.PrimaryBlue)
             Spacer(Modifier.height(16.dp))
             when (step) {
                 0 -> {
                     StepCard {
-                        Text(stringResource(R.string.onboarding_welcome_title), fontSize = 26.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                        Text(stringResource(R.string.onboarding_welcome_title), color = com.mawaqit.app.ui.theme.PrimaryBlue, fontSize = 26.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                         Spacer(Modifier.height(12.dp))
                         Text(stringResource(R.string.onboarding_welcome_subtitle), fontSize = 15.sp, color = MaterialTheme.colorScheme.outline, textAlign = TextAlign.Center)
                         Spacer(Modifier.height(24.dp))
-                        GoldButton(stringResource(R.string.onboard_continue)) { step = 1 }
+                        OnboardPrimaryButton(stringResource(R.string.onboard_continue)) { step = 1 }
                     }
                 }
                 1 -> {
                     StepCard {
-                        Text(stringResource(R.string.onboard_page2_title), fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.onboard_page2_title), color = com.mawaqit.app.ui.theme.PrimaryBlue, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(8.dp))
                         Text(stringResource(R.string.onboard_page2_body), fontSize = 14.sp, color = MaterialTheme.colorScheme.outline, textAlign = TextAlign.Center)
                         Spacer(Modifier.height(16.dp))
                         Row(Modifier.fillMaxWidth()) {
                             Column(Modifier.weight(1f)) {
-                                Text("Country", fontWeight = FontWeight.SemiBold)
+                                Text("Country", fontWeight = FontWeight.SemiBold, color = com.mawaqit.app.ui.theme.PrimaryBlue)
                                 androidx.compose.runtime.key(countryNames) {
                                     WheelPicker(
                                         items = countryNames,
@@ -119,7 +122,7 @@ fun OnboardingScreen(
                             }
                             Spacer(Modifier.height(0.dp))
                             Column(Modifier.weight(1f)) {
-                                Text("City", fontWeight = FontWeight.SemiBold)
+                                Text("City", fontWeight = FontWeight.SemiBold, color = com.mawaqit.app.ui.theme.PrimaryBlue)
                                 androidx.compose.runtime.key(pickedCountry, cities) {
                                     WheelPicker(
                                         items = cities,
@@ -135,22 +138,20 @@ fun OnboardingScreen(
                                     )
                                 }
                                 if (pickedCountry == null) {
-                                    Text("Select country first", fontSize = 12.sp, color = MaterialTheme.colorScheme.outline)
+                                    Text("Select country first", fontSize = 12.sp, color = com.mawaqit.app.ui.theme.PrimaryBlue.copy(alpha = 0.7f))
                                 }
                             }
                         }
                         Spacer(Modifier.height(16.dp))
-                        GoldButton(stringResource(R.string.onboard_detect)) {
+                        OnboardPrimaryButton(stringResource(R.string.onboard_detect)) {
                             viewModel.useGpsLocation()
                             step = 2
                         }
-                        Spacer(Modifier.height(8.dp))
-                        TextButton(onClick = { step = 2 }) { Text(stringResource(R.string.onboard_skip)) }
                     }
                 }
                 2 -> {
                     StepCard {
-                        Text(stringResource(R.string.onboard_page3_title), fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.onboard_page3_title), color = com.mawaqit.app.ui.theme.PrimaryBlue, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(8.dp))
                         Text(stringResource(R.string.onboard_page3_body), fontSize = 14.sp, color = MaterialTheme.colorScheme.outline, textAlign = TextAlign.Center)
                         Spacer(Modifier.height(16.dp))
@@ -158,8 +159,8 @@ fun OnboardingScreen(
                         listOf("en" to "English", "ur" to "اردو").forEach { (tag, label) ->
                             Card(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                                border = if (language == tag) BorderStroke(2.dp, PrimaryGold) else null,
-                                colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+                                border = if (language == tag) BorderStroke(2.5.dp, com.mawaqit.app.ui.theme.PrimaryBlue) else BorderStroke(1.dp, com.mawaqit.app.ui.theme.PrimaryBlue.copy(alpha = 0.25f)),
+                                colors = CardDefaults.cardColors(containerColor = if (language == tag) com.mawaqit.app.ui.theme.ChipBg else SurfaceWhite),
                                 onClick = {
                                     language = tag
                                     // Persist only — setApplicationLocales is applied
@@ -174,25 +175,25 @@ fun OnboardingScreen(
                                     Spacer(Modifier.height(6.dp))
                                     Text(if (tag == "en") sample.english else sample.urdu, fontSize = 14.sp)
                                     Text(sample.reference, fontSize = 12.sp, color = MaterialTheme.colorScheme.outline)
-                                    Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = PrimaryGold)
+                                    Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = com.mawaqit.app.ui.theme.PrimaryBlue)
                                 }
                             }
                         }
                         Spacer(Modifier.height(16.dp))
-                        GoldButton(stringResource(R.string.onboard_continue)) { step = 3 }
+                        OnboardPrimaryButton(stringResource(R.string.onboard_continue)) { step = 3 }
                     }
                 }
                 3 -> {
                     StepCard {
-                        Text(stringResource(R.string.onboard_page4_title), fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.onboard_page4_title), color = com.mawaqit.app.ui.theme.PrimaryBlue, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(8.dp))
                         Text(stringResource(R.string.onboard_page4_body), fontSize = 14.sp, color = MaterialTheme.colorScheme.outline, textAlign = TextAlign.Center)
                         Spacer(Modifier.height(16.dp))
                         listOf(AzanOption.DEFAULT to "Default Azan", AzanOption.MAKKAH to "Makkah Azan").forEach { (opt, label) ->
                             Card(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                                border = if (azan == opt) BorderStroke(2.dp, PrimaryGold) else null,
-                                colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+                                border = if (azan == opt) BorderStroke(2.5.dp, com.mawaqit.app.ui.theme.PrimaryBlue) else BorderStroke(1.dp, com.mawaqit.app.ui.theme.PrimaryBlue.copy(alpha = 0.25f)),
+                                colors = CardDefaults.cardColors(containerColor = if (azan == opt) com.mawaqit.app.ui.theme.ChipBg else SurfaceWhite),
                                 onClick = {
                                     azan = opt
                                     viewModel.setSelectedAzan(opt)
@@ -208,7 +209,7 @@ fun OnboardingScreen(
                                         Modifier
                                             .height(40.dp)
                                             .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primary),
+                                            .background(com.mawaqit.app.ui.theme.PrimaryBlue),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         androidx.compose.material3.IconButton(onClick = { viewModel.previewAzan(opt) }) {
@@ -221,26 +222,27 @@ fun OnboardingScreen(
                         if (!notifGranted) {
                             Spacer(Modifier.height(12.dp))
                             TextButton(onClick = { notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }) {
-                                Text(stringResource(R.string.onboard_allow_notifs))
+                                Text(stringResource(R.string.onboard_allow_notifs), color = com.mawaqit.app.ui.theme.PrimaryBlue)
                             }
                         }
                         Spacer(Modifier.height(16.dp))
-                        GoldButton(stringResource(R.string.onboard_continue)) { step = 4 }
+                        OnboardPrimaryButton(stringResource(R.string.onboard_continue)) { step = 4 }
                     }
                 }
                 4 -> {
                     StepCard {
-                        Text(stringResource(R.string.onboard_page5_title), fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.onboard_page5_title), color = com.mawaqit.app.ui.theme.PrimaryBlue, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(12.dp))
                         Text(stringResource(R.string.onboard_page5_body), fontSize = 15.sp, color = MaterialTheme.colorScheme.outline, textAlign = TextAlign.Center)
                         Spacer(Modifier.height(24.dp))
-                        GoldButton(stringResource(R.string.onboard_lets_roll)) {
+                        OnboardPrimaryButton(stringResource(R.string.onboard_lets_roll)) {
                             viewModel.stopPreview()
-                            viewModel.setOnboardingComplete()
-                            // Apply the saved language NOW — applying it earlier
-                            // recreates the Activity mid-flow (user bug).
-                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(language))
-                            onComplete()
+                            viewModel.finish {
+                                // Apply the saved language NOW — applying it earlier
+                                // recreates the Activity mid-flow (user bug).
+                                AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(language))
+                                onComplete()
+                            }
                         }
                     }
                 }
@@ -249,10 +251,11 @@ fun OnboardingScreen(
                 Spacer(Modifier.height(8.dp))
                 TextButton(onClick = {
                     viewModel.stopPreview()
-                    viewModel.setOnboardingComplete()
-                    AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(language))
-                    onComplete()
-                }) { Text(stringResource(R.string.onboard_skip)) }
+                    viewModel.finish {
+                        AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(language))
+                        onComplete()
+                    }
+                }) { Text(stringResource(R.string.onboard_skip), color = com.mawaqit.app.ui.theme.PrimaryBlue) }
             }
         }
     }
@@ -263,6 +266,7 @@ private fun StepCard(content: @Composable () -> Unit) {
     Card(
         colors = CardDefaults.cardColors(containerColor = SurfaceWhite.copy(alpha = 0.96f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, com.mawaqit.app.ui.theme.PrimaryBlue.copy(alpha = 0.35f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) { content() }
@@ -270,7 +274,7 @@ private fun StepCard(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun GoldButton(text: String, onClick: () -> Unit) {
+private fun OnboardPrimaryButton(text: String, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(containerColor = PrimaryGold, contentColor = MaterialTheme.colorScheme.onSurface),

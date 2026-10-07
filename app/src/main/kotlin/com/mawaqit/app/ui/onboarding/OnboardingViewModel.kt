@@ -45,6 +45,16 @@ class OnboardingViewModel @Inject constructor(
         viewModelScope.launch { prefs.setOnboardingComplete(true) }
     }
 
+    /** Persist the flag, THEN run the callback (locale apply + navigate) —
+     *  so the Activity recreate from setApplicationLocales never races the
+     *  DataStore write and re-shows onboarding (user bug, PHASE-9.2). */
+    fun finish(onDone: () -> Unit) {
+        viewModelScope.launch {
+            prefs.setOnboardingComplete(true)
+            onDone()
+        }
+    }
+
     fun useGpsLocation() {
         viewModelScope.launch {
             val loc = try { locationHelper.getCurrentLocation() } catch (_: Exception) { null }
