@@ -608,3 +608,19 @@ at the end of the session. Don't start any new phase without my explicit OK.
 
 That's it. Those 3 reads = full context, every time. 🚀
 - **2026-10-05 — Session 18 (PHASE-8.1):** Home alarm switches removed (Settings owns them); unselected chip text now black on surfaceVariant; Location sheet = GPS auto-detect OR country→city via CountriesNowApiService (calendarByCity monthly fetch in MANUAL mode); Calculation method picker (8 methods, pref + cache invalidation + Home auto-reload). 
+## PENDING ASSETS (user must supply — not built yet)
+- **More adhan voices** (user request, PHASE-9.1): currently only azan_default/fajr/makkah.mp3.
+  To add: drop the MP3 into app/src/main/res/raw/, add one AzanType enum entry +
+  audioResId() row in alarm/AzanType.kt — Onboarding + Settings adhan lists follow
+  automatically (they iterate AzanOption/A Default). Fajr rule (Rule 14) still applies.
+- Real azan MP3s (assignment/05) — stubs committed.
+- Compressed splash video — DONE (res/raw/splash_video.mp4, 3.0MB).
+
+- **2026-10-05 — Session 19 (PHASE-9 + 9.1):** Splash video + card rotation, premium
+  5-page onboarding wired, main routing. 9.1 polish: full-screen cover-crop muted video
+  (splash longer ~10s after onboarding), ornament header on all tabs, alarm-clock-style
+  wheel pickers (country → city, city disabled until country settles), language locale
+  now applied once at Let's Roll (fixes onboarding-restart bug), adhan page: card-tap
+  select, blue circular play, notifications button hides once granted. Build GREEN
+  (e4521c2). User phone test pending — then MVP is functionally complete per PHASE_9
+  checklist (Play Store notes remain documented-only).
