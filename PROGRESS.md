@@ -608,11 +608,11 @@ at the end of the session. Don't start any new phase without my explicit OK.
 
 That's it. Those 3 reads = full context, every time. 🚀
 - **2026-10-05 — Session 18 (PHASE-8.1):** Home alarm switches removed (Settings owns them); unselected chip text now black on surfaceVariant; Location sheet = GPS auto-detect OR country→city via CountriesNowApiService (calendarByCity monthly fetch in MANUAL mode); Calculation method picker (8 methods, pref + cache invalidation + Home auto-reload). 
-## PENDING ASSETS (user must supply — not built yet)
+## PENDING ASSETS (user must supply / not built yet)
 - **More adhan voices** (user request, PHASE-9.1): currently only azan_default/fajr/makkah.mp3.
   To add: drop the MP3 into app/src/main/res/raw/, add one AzanType enum entry +
   audioResId() row in alarm/AzanType.kt — Onboarding + Settings adhan lists follow
-  automatically (they iterate AzanOption/A Default). Fajr rule (Rule 14) still applies.
+  automatically (they iterate the enum). Fajr rule (Rule 14) always applies.
 - Real azan MP3s (assignment/05) — stubs committed.
 - Compressed splash video — DONE (res/raw/splash_video.mp4, 3.0MB).
 
@@ -624,3 +624,29 @@ That's it. Those 3 reads = full context, every time. 🚀
   select, blue circular play, notifications button hides once granted. Build GREEN
   (e4521c2). User phone test pending — then MVP is functionally complete per PHASE_9
   checklist (Play Store notes remain documented-only).
+- **2026-10-05 — Session 19 (PHASE-9.2):** Gold-first onboarding palette restored
+  (titles dark, card borders gold 35%, wheel center-row + tick lines gold, labels gold,
+  ornament gold on every screen). Blue kept only as accents: Continue button (blue
+  outline that fills blue on press via collectIsPressedAsState+animateColorAsState),
+  selected language/adhan card borders (2.5dp blue + ChipBg tint), blue circular adhan
+  play button, notifications link, wheel center-row/label accent. Onboarding page titles
+  stay dark. Location page got Continue next to Detect; Country/City labels centered;
+  Skip deduplicated and lives inside every step card (was overflowing after Scrollable
+  page 2). "Where are you from?" and "Recite Bismillah" string updates applied.
+  TextureView replaces VideoView in VideoBackground so the video can be stretched to
+  fill-fit full screen (TextureView extends to its view bounds, VideoView cannot); the
+  previous BoxWithConstraints/videoAspect center-crop was reverted (redundant once the
+  TextureView fills). WheelPicker: selected item now exactly centers between the two
+  gold lines (contentPadding vertical 88dp on a 220dp viewport, page 44dp). City wheel
+  populates the moment a country center lands (composition fire onSettled removed —
+  it used to clobber GPS); settle now gated by `touched` so the wheels never clobber a
+  fresh GPS fix. finish() persists ONBOARDING_COMPLETE before setApplicationLocales +
+  navigate, which fixes the activity-recreate race that used to replay onboarding.
+  HomeViewModel.refreshIfStale() restored (accidentally deleted together with
+  testKarachi() during cleanup; testKarachi itself removed). HomeScreen no longer has
+  LocationSetupContent — when needsLocation=true it shows LocationPromptFallback
+  (AlertDialog prompt + Allow Location button + BuildStamp + optional error).
+  Onboarding GPS Detect now requests ACCESS_FINE_LOCATION first, and on both
+  Onboarding + Home fallback the granted path runs checkLocationSettings ->
+  ResolvableApiException.startResolutionForResult -> polls LocationManager for the
+  radio turning on before useGpsLocation()/useMyLocation() runs. Build GREEN (573744b).
