@@ -150,6 +150,14 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /** Location changed from Settings invalidates the month marker; reload on return to Home. */
+    fun refreshIfStale() {
+        viewModelScope.launch {
+            val marker = prefs.getLastMonthFetchedOnce()
+            if (marker.isNullOrEmpty() && _state.value.timings != null) loadTimes()
+        }
+    }
+
     fun clearError() = _state.update { it.copy(error = null) }
 
     // ── salah checkmarks (the feature Phase 3's notification wrote into) ────
