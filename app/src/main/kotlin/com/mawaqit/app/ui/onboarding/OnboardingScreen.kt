@@ -54,6 +54,9 @@ import com.mawaqit.app.ui.components.VideoBackground
 import com.mawaqit.app.ui.theme.PrimaryGold
 import com.mawaqit.app.ui.theme.SurfaceWhite
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.MainScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)

@@ -52,6 +52,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.MainScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mawaqit.app.BuildConfig
 import com.mawaqit.app.R
