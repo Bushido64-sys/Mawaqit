@@ -89,8 +89,39 @@ fun OnboardingScreen(
     ) { granted ->
         if (granted) {
             locationDenied = false
-            viewModel.useGpsLocation()
-            step = 2
+            // Permission alone doesn't turn the radio on — force the system
+            // sheet first, then fetch (same Phase-7 fix as Qibla/Home).
+            val req = com.google.android.gms.location.LocationRequest
+                .Builder(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, 10_000).build()
+            val sreq = com.google.android.gms.location.LocationSettingsRequest.Builder()
+                .addLocationRequest(req).setAlwaysShow(true).build()
+            com.google.android.gms.location.LocationServices
+                .getSettingsClient(context)
+                .checkLocationSettings(sreq).addOnCompleteListener { task ->
+                    try {
+                        task.getResult(Exception::class.java)
+                        viewModel.useGpsLocation()
+                        step = 2
+                    } catch (e: com.google.android.gms.common.api.ResolvableApiException) {
+                        runCatching {
+                            e.startResolutionForResult(context as android.app.Activity, 1002)
+                        }
+                        kotlinx.coroutines.MainScope().launch {
+                            repeat(15) {
+                                kotlinx.coroutines.delay(2_000)
+                                val lm = context.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
+                                val on = try {
+                                    lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER) ||
+                                        lm.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)
+                                } catch (_: Exception) { true }
+                                if (on) { viewModel.useGpsLocation(); step = 2; return@launch }
+                            }
+                        }
+                    } catch (_: Exception) {
+                        viewModel.useGpsLocation()
+                        step = 2
+                    }
+                }
         } else {
             locationDenied = true
         }

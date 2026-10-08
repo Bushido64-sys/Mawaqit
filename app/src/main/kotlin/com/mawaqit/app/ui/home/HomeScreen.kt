@@ -83,6 +83,7 @@ import kotlinx.coroutines.delay
 fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val homeContext = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     val locationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -105,6 +106,19 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
                                 homeContext as android.app.Activity,
                                 1002
                             )
+                        }
+                        // Poll until the user turns location on (or gives up),
+                        // then try the fetch once more (Phase-7 pattern).
+                        scope.launch {
+                            repeat(15) {
+                                kotlinx.coroutines.delay(2_000)
+                                val lm = homeContext.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
+                                val on = try {
+                                    lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER) ||
+                                        lm.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)
+                                } catch (_: Exception) { true }
+                                if (on) { viewModel.useMyLocation(); return@launch }
+                            }
                         }
                     } catch (_: Exception) {
                         viewModel.useMyLocation()
