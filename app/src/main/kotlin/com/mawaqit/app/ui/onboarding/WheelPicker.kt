@@ -40,11 +40,13 @@ fun WheelPicker(
         return
     }
     val state = rememberPagerState(pageCount = { items.size })
-    // Fire onSettled on composition too (centers the first item), not only
-    // after a scroll — this is what populates the city wheel the moment a
-    // country is centered (user bug: cities never appeared).
+    // Only save a selection after the user actually scrolls the wheel —
+    // firing on composition would auto-save the first row and clobber any
+    // GPS location the user just picked (user bug, PHASE-9.2).
+    var touched by remember { androidx.compose.runtime.mutableStateOf(false) }
     LaunchedEffect(state.currentPage, state.isScrollInProgress) {
-        if (!state.isScrollInProgress && enabled && items.isNotEmpty()) onSettled(state.currentPage)
+        if (state.isScrollInProgress) touched = true
+        if (!state.isScrollInProgress && touched && enabled && items.isNotEmpty()) onSettled(state.currentPage)
     }
     androidx.compose.foundation.layout.Box(modifier) {
         VerticalPager(

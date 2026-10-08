@@ -150,23 +150,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /** Fixed Karachi coords so times can be verified against aladhan.com. */
-    fun testKarachi() {
-        viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
-            repository.setLocation(24.8607, 67.0011, cityName = "Karachi")
-            loadTimes()
-        }
-    }
-
-    /** Location changed from Settings invalidates the month marker; reload on return to Home. */
-    fun refreshIfStale() {
-        viewModelScope.launch {
-            val marker = prefs.getLastMonthFetchedOnce()
-            if (marker.isNullOrEmpty() && _state.value.timings != null) loadTimes()
-        }
-    }
-
     fun clearError() = _state.update { it.copy(error = null) }
 
     // ── salah checkmarks (the feature Phase 3's notification wrote into) ────

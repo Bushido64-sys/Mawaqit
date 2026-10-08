@@ -83,6 +83,18 @@ fun OnboardingScreen(
     val notifLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> notifGranted = granted }
+    var locationDenied by remember { mutableStateOf(false) }
+    val locationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            locationDenied = false
+            viewModel.useGpsLocation()
+            step = 2
+        } else {
+            locationDenied = true
+        }
+    }
 
     VideoBackground(overlayAlpha = 0.62f, modifier = Modifier.fillMaxSize()) {
         Column(
@@ -144,8 +156,10 @@ fun OnboardingScreen(
                         }
                         Spacer(Modifier.height(16.dp))
                         OnboardPrimaryButton(stringResource(R.string.onboard_detect)) {
-                            viewModel.useGpsLocation()
-                            step = 2
+                            locationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                        }
+                        if (locationDenied) {
+                            Text("Location denied — pick your country and city in the wheels, or allow it in Settings.", fontSize = 12.sp, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
                         }
                         Spacer(Modifier.height(8.dp))
                         OnboardPrimaryButton(stringResource(R.string.onboard_continue)) { step = 2 }

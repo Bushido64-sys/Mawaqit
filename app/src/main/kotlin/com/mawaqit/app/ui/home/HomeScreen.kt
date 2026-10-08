@@ -155,33 +155,32 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
     when {
         // needsLocation == null → still checking saved prefs: show the spinner,
         // NOT the setup screen (prevents the one-frame "Assalamualaikum" flash).
-        state.needsLocation == true -> LocationSetupContent(
+        state.needsLocation == true -> LocationPromptFallback(
             isLoading = state.isLoading,
             error = state.error,
-            onUseLocation = {
+            onAllow = {
                 locationLauncher.launch(
                     arrayOf(
                         Manifest.permission.ACCESS_FINE_LOCATION,
                         Manifest.permission.ACCESS_COARSE_LOCATION
                     )
                 )
-            },
-            onKarachi = viewModel::testKarachi
+            }
         )
         state.isLoading && state.timings == null -> LoadingState()
         else -> TimesContent(state, viewModel)
     }
 }
 
-// ── state 1: no location yet ─────────────────────────────────────────────────
+// ── state 1: no location yet — pop a popup, fallback stays behind ───────────
 
 @Composable
-private fun LocationSetupContent(
+private fun LocationPromptFallback(
     isLoading: Boolean,
     error: String?,
-    onUseLocation: () -> Unit,
-    onKarachi: () -> Unit
+    onAllow: () -> Unit
 ) {
+    var dismissed by remember { androidx.compose.runtime.mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -190,27 +189,36 @@ private fun LocationSetupContent(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            stringResource(R.string.onboarding_welcome_title),
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
             stringResource(R.string.onboarding_welcome_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.outline,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
-        Spacer(Modifier.height(32.dp))
-        PrimaryPill(stringResource(R.string.allow_location), enabled = !isLoading, onClick = onUseLocation)
-        Spacer(Modifier.height(12.dp))
-        PrimaryPill(stringResource(R.string.test_with_karachi), enabled = !isLoading, onClick = onKarachi)
+        Spacer(Modifier.height(24.dp))
+        PrimaryPill(stringResource(R.string.allow_location), enabled = !isLoading, onClick = onAllow)
         error?.let {
             Spacer(Modifier.height(12.dp))
             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
         Spacer(Modifier.height(24.dp))
         BuildStamp()
+    }
+    if (!dismissed) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { dismissed = true },
+            title = { Text(stringResource(R.string.onboard_page2_title)) },
+            text = { Text(stringResource(R.string.onboard_page2_body)) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { dismissed = true; onAllow() }) {
+                    Text(stringResource(R.string.allow_location))
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { dismissed = true }) {
+                    Text(stringResource(R.string.onboard_skip))
+                }
+            }
+        )
     }
 }
 
