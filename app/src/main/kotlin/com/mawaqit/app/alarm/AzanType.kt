@@ -37,18 +37,41 @@ enum class AzanType(
         val choices: List<AzanType> = AzanType.entries.filter { it.userSelectable }
 
         /**
-         * Maps a stored prefs value back to an entry.
+         * Resolve a value carried in an alarm intent's `extra_azan_type`.
          *
-         * Legacy installs wrote `"default"` / `"makkah"` before the voices were named
-         * (see DATA_SCHEMA.md), so those map to their nearest new homes rather than
-         * silently resetting an existing user's choice.
+         * May legitimately be ANY entry — a Fajr alarm was planned with FAJR — so this
+         * one does not filter. Absent/legacy values ("DEFAULT"/"MAKKAH" from before
+         * PHASE-10, or null) land on their nearest new homes.
          */
         fun fromStorage(raw: String?): AzanType {
-            AzanType.entries.firstOrNull { it.storage.equals(raw, ignoreCase = true) }?.let { return it }
-            return when (raw?.trim()?.lowercase()) {
-                "makkah" -> ALI_MALA   // the old Makkah recording → a Makkah Haram muezzin
-                else -> DEFAULT
-            }
+            entries.firstOrNull { it.storage.equals(raw, ignoreCase = true) }?.let { return it }
+            return legacy(raw)
+        }
+
+        /**
+         * Resolve the user's STORED SELECTION from prefs.
+         *
+         * Unlike [fromStorage] this only ever returns a **user-selectable** voice. That
+         * matters for legacy installs: before PHASE-10 the documented pref domain was
+         * "default" | "fajr" | "makkah", so an existing user can have `"fajr"` stored.
+         * Matching it against [FAJR] would play the "As-salatu khayrun min an-nawm" azan
+         * at Dhuhr, Asr, Maghrib and Isha — forever, with nothing highlighted in the
+         * picker. Falling back keeps that profile on a normal voice.
+         */
+        fun selectedFromStorage(raw: String?): AzanType {
+            entries.firstOrNull {
+                it.userSelectable && it.storage.equals(raw, ignoreCase = true)
+            }?.let { return it }
+            return legacy(raw)
+        }
+
+        /**
+         * Pre-PHASE-10 stored values ("default" / "makkah") mapped to their nearest
+         * new homes, so an existing user's choice survives the upgrade.
+         */
+        private fun legacy(raw: String?): AzanType = when (raw?.trim()?.lowercase()) {
+            "makkah" -> ALI_MALA   // the old Makkah recording → a Makkah Haram muezzin
+            else -> DEFAULT
         }
     }
 }

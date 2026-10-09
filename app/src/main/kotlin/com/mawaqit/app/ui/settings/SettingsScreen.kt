@@ -368,7 +368,13 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             viewModel.stopAzanPreview()
             showAzanSheet = false
         }, sheetState = sheetState) {
-            Column(Modifier.padding(16.dp)) {
+            // 6 voices (PHASE-10) is ~300dp of rows — tall enough to clip against the
+            // sheet's partial-expansion height on a small phone. Scroll so nothing hides.
+            Column(
+                Modifier
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
                 Text(stringResource(R.string.settings_azan_sound), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                 AzanType.choices.forEach { option ->
                     Row(

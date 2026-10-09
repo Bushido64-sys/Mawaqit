@@ -715,3 +715,99 @@ to the next plan refresh (unchanged PHASE-3.1 behaviour).
 3. **Confirm each label matches the actual voice** (the one thing I could not verify)
 4. All 5 prayer toggles still arm; azan still fires at prayer time
 5. Urdu mode shows the muezzin names in Arabic script
+
+### PHASE-10 post-build notes (build b9bdc8a, GREEN)
+- **Rule 11 25MB cap consciously broken (user decision 2026-10-09):** adding 9.4MB of real
+  azan audio took the APK from 21.9MB to ~30.2MB. Investigated per Rule 11 — the root cause
+  is pre-existing and independent of Phase 10: `material-icons-extended` is a **35.69MB**
+  unpacked dependency bundled for only **19 icons**, 13 of which exist in the **0.83MB**
+  `material-icons-core`. Removing it would land the APK at ~17MB *and keep all 7 voices at
+  full quality*. **Deferred, not abandoned** — do it at Play Store prep. Do NOT trim the azan
+  audio to fit: the user explicitly chose quality over the cap. Rule 11 now documents this.
+- **Verified by measurement, not guesswork** (Google Maven AARs):
+  extended 35.69MB / core 0.83MB. The 4 extended-only icons are `Event`, `Explore`,
+  `MenuBook`, `RadioButtonUnchecked`.
+- **PrayerRow visual fix (b9bdc8a):** the unchecked state was a 1dp `RadioButtonUnchecked`
+  hairline sitting beside a solid green `CheckCircle` — badly unbalanced, and nearly invisible.
+  Replaced with a real bordered `Box` ring: 1.5dp muted for "not done", **2.5dp gold when the
+  prayer is CURRENT** (DESIGN.md §9's unselected-chip treatment, extended to invite the tap).
+  Lost the icon's semantics, so `contentDescription` was re-attached via `semantics {}` —
+  accessibility preserved. Net effect: the azan work also fixed a real visual bug.
+- **Artifact note:** the Actions artifact zip was 30.22MB vs 21.89MB pre-Phase-10 — that
+  8.3MB delta is the audio, and it is the whole story. APK is not downloadable without a
+  GitHub login (private repo), so size is measured from the artifact meta, not an unpack.
+
+---
+
+## [PHASE-10.1] AUDIT — bugs found in the PHASE-10 build, and what was fixed
+
+Two independent audits (alarm/data chain, and screens/resources) run over the whole build.
+
+### Fixed in this pass (committed in PHASE-10.1)
+
+**1. INTRODUCED — legacy `"fajr"` pref replayed the Fajr azan at EVERY prayer (HIGH).**
+`AzanType.fromStorage()` matched on `storage`, and `FAJR.storage == "fajr"` — which is
+exactly what the pre-PHASE-10 DATA_SCHEMA documented as a legal pref value
+(`"default" | "fajr" | "makkah"`). So an existing install that had `"fajr"` stored would
+hear "As-salatu khayrun min an-nawm" at Dhuhr, Asr, Maghrib and Isha, forever, with nothing
+highlighted in the picker (FAJR is filtered out of `choices`).
+Fix: split the resolver in two — `fromStorage()` (intent extra, may legitimately be FAJR)
+and `selectedFromStorage()` (prefs, selectable entries only, legacy values fall back).
+Truth-table for all 11 legacy/normal cases verified before shipping.
+
+**2. INTRODUCED — onboarding azan page overflowed, Continue/Skip off-screen (HIGH).**
+`a72ae85` swapped the 2 hardcoded azan cards for `AzanType.choices.forEach` — **6** cards,
+~750dp of content, in a `Column(fillMaxSize)` with no scroll. On a normal 411x914dp phone
+the buttons are pushed below the fold. (Same bug family as the phase-9 page-2 overflow.)
+Fix: the voice list now scrolls inside a bounded `heightIn(max = 320.dp)` box, so the
+title, body, notifications button, Continue and Skip all stay on screen. Deliberately NOT
+fixed at the root Column — scrolling that would un-centre the other 4 pages.
+
+**3. Same bug in the Settings azan sheet (MEDIUM).** 6 rows instead of 2 could clip against
+the partial-expansion height. Added `verticalScroll`.
+
+**4. Starter fix that made things WORSE — reverted (learned the hard way).**
+First attempt at the "preview azan keeps ringing after you leave" bug was an
+`onCleared()` in both ViewModels. The audit caught that this is a **regression, not a fix**:
+`AzanPlayer` is a `@Singleton` — the SAME instance `AzanService` injects — so clearing
+Settings/Onboarding while a real prayer azan is sounding **silently kills the azan**. For an
+app whose entire job is prayer alarms, that's the worst possible failure. Reverted.
+`viewModelScope` cancellation also means the stop was a no-op during `prepare()`.
+**Both ViewModels are back to exactly their committed state.**
+
+**5. Preview not stopped when advancing azan page → page 5 (MEDIUM, pre-existing).**
+`step = 4` on Continue called no stop. Now calls `stopPreview()`.
+
+**6. Latent footgun: registry wrote enum `.name`, intent extra wrote `.storage` (LOW).**
+`toRegistryEntry()` still wrote `"ALAFASY"` while the intent extra carried `"alafasy"`.
+Nothing parses field 4 back today, but the two formats disagreeing is a trap for whoever
+wires it up next. Both now write `storage`.
+
+**7. Startup housekeeping:** `stopPreview()` now nulls `previewJob` (matched Settings), and
+the `Play preview` hardcoded English on the onboarding play button now uses
+`R.string.settings_preview`.
+
+### Found, NOT fixed — needs a product decision (or a dedicated pass)
+
+- **Shared-singleton audio races (MEDIUM, pre-existing).** One `@Singleton AzanPlayer` is
+  used for both previews and the real alarm. A preview's trailing `stop()` can fire *after*
+  a real azan's `playAzan()` and kill it. The correct fix is separate players, or an
+  `isPreviewing` owner flag on the singleton — a real change to the critical audio path,
+  so it wants its own build + phone test, not an audit-pass patch.
+- **`AzanService.started` single-slot guard (MEDIUM, pre-existing).** If a second alarm
+  arrives while one is playing (realistically: the PHASE-3.2 test-alarm during a real azan)
+  the second one gets its notification relabelled but no audio, no salah_log row and no
+  fresh 5-min cutoff. Only true trigger is the test alarm — real prayers can't coincide.
+- **`AzanPlayer` cross-thread (LOW, pre-existing).** `mediaPlayer` is mutated from IO and read
+  from the main thread with no `@Volatile`/lock. Mostly benign, flagged for hardening.
+- **Unsafe `as Activity` cast + uncancellable 30s `MainScope` poll** in the location
+  detection path (MEDIUM, pre-existing, wrapped in runCatching so it degrades silently).
+- **Urdu gap around the new feature (MEDIUM, pre-existing).** All **7 azan voice names** have
+  Urdu — but `settings_azan_sound`, `settings_preview`, `settings_select`, `settings_change`,
+  `onboard_page4_title/body` do NOT, so the picker's chrome falls back to English.
+  118 of 166 strings are still untranslated overall; that is its own task.
+- **Verified CLEAN during the audit:** no missing `R.string`/`R.raw` refs, no duplicate keys,
+  no unescaped apostrophes (the aapt "Invalid unicode escape sequence" failure mode),
+  both string XMLs well-formed, all `AzanType` label/res pairs resolve in both locales,
+  `selectedFromStorage` never leaks FAJR, cancel-all still matches PendingIntents despite
+  the changed extras (extras are not part of `Intent.filterEqual`).

@@ -68,7 +68,7 @@ class SettingsViewModel @Inject constructor(
                 prefs.savedCityName
             ) { azan, volume, force, lang, city ->
                 SettingsUiState(
-                    selectedAzan = AzanType.fromStorage(azan),
+                    selectedAzan = AzanType.selectedFromStorage(azan),
                     azanVolume = volume,
                     azanForceAlarm = force,
                     appLanguage = lang,

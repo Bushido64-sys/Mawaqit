@@ -83,8 +83,10 @@ class AzanService : Service() {
         }
 
         // 3. Play the azan (prepare() is synchronous → Dispatchers.IO).
-        // The extra holds the AzanType NAME the alarm was planned with, frozen at plan
-        // time so a later Settings change does not retro-alter an armed alarm.
+        // The extra holds the azan's STORAGE key, frozen into the intent at plan time
+        // so a later Settings change does not retro-alter an alarm that is already armed.
+        // Absent/legacy values ("DEFAULT"/"MAKKAH" from before PHASE-10, or null) fall
+        // back to the default voice via AzanType.fromStorage().
         val azanType = AzanType.fromStorage(intent?.getStringExtra(AlarmReceiver.EXTRA_AZAN_TYPE))
         serviceScope.launch(Dispatchers.IO) { azanPlayer.playAzan(azanType) }
 

@@ -69,7 +69,9 @@ class AlarmScheduler @Inject constructor(
     /** Fajr is always the special azan (Rule 14); others follow the user's choice. */
     suspend fun azanTypeFor(prayer: PrayerName): AzanType = when (prayer) {
         PrayerName.FAJR -> AzanType.FAJR
-        else -> AzanType.fromStorage(prefs.getSelectedAzanOnce())
+        // selectedFromStorage (not fromStorage): a legacy stored "fajr" must never
+        // replay the Fajr-only azan at a non-Fajr prayer.
+        else -> AzanType.selectedFromStorage(prefs.getSelectedAzanOnce())
     }
 
     /**

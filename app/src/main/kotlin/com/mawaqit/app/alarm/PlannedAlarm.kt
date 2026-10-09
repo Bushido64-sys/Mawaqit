@@ -27,5 +27,8 @@ data class PlannedAlarm(
 
 /** Registry string for one planned alarm (PrefsRepository.ACTIVE_ALARMS). */
 internal fun PlannedAlarm.toRegistryEntry(): String =
-    listOf(prayer.name, dateIso, timeMillis.toString(), azanType.name)
+    // 4th field is the azan STORAGE key — same value the intent extra carries. Nothing
+    // parses it back today (see pendingIntentFromEntry, which uses prayer+date only),
+    // but writing the same key everywhere removes a footgun for whoever wires it up next.
+    listOf(prayer.name, dateIso, timeMillis.toString(), azanType.storage)
         .joinToString(separator = PlannedAlarm.REGISTRY_SEPARATOR)

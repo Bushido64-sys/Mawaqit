@@ -15,8 +15,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
@@ -244,31 +247,41 @@ fun OnboardingScreen(
                         Spacer(Modifier.height(8.dp))
                         Text(stringResource(R.string.onboard_page4_body), fontSize = 14.sp, color = MaterialTheme.colorScheme.outline, textAlign = TextAlign.Center)
                         Spacer(Modifier.height(16.dp))
-                        AzanType.choices.forEach { option ->
-                            Card(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                                border = if (azan == option) BorderStroke(2.5.dp, com.mawaqit.app.ui.theme.PrimaryBlue) else BorderStroke(1.dp, PrimaryGold.copy(alpha = 0.35f)),
-                                colors = CardDefaults.cardColors(containerColor = if (azan == option) com.mawaqit.app.ui.theme.ChipBg else SurfaceWhite),
-                                onClick = {
-                                    azan = option
-                                    viewModel.setSelectedAzan(option)
-                                }
-                            ) {
-                                Row(
-                                    Modifier.fillMaxWidth().padding(16.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                        // 6 voices (PHASE-10) does not fit on a small phone alongside the
+                        // title, body, notifications button, Continue and Skip — that
+                        // overflow pushed the buttons off-screen entirely. Scroll the voice
+                        // list inside a bounded box so everything else stays reachable.
+                        Column(
+                            Modifier
+                                .heightIn(max = 320.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            AzanType.choices.forEach { option ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                                    border = if (azan == option) BorderStroke(2.5.dp, com.mawaqit.app.ui.theme.PrimaryBlue) else BorderStroke(1.dp, PrimaryGold.copy(alpha = 0.35f)),
+                                    colors = CardDefaults.cardColors(containerColor = if (azan == option) com.mawaqit.app.ui.theme.ChipBg else SurfaceWhite),
+                                    onClick = {
+                                        azan = option
+                                        viewModel.setSelectedAzan(option)
+                                    }
                                 ) {
-                                    Text(stringResource(option.labelRes), fontWeight = FontWeight.Medium)
-                                    Box(
-                                        Modifier
-                                            .height(40.dp)
-                                            .clip(CircleShape)
-                                            .background(com.mawaqit.app.ui.theme.PrimaryBlue),
-                                        contentAlignment = Alignment.Center
+                                    Row(
+                                        Modifier.fillMaxWidth().padding(16.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        IconButton(onClick = { viewModel.previewAzan(option) }) {
-                                            Icon(Icons.Filled.PlayArrow, contentDescription = stringResource(R.string.settings_preview), tint = androidx.compose.ui.graphics.Color.White)
+                                        Text(stringResource(option.labelRes), fontWeight = FontWeight.Medium)
+                                        Box(
+                                            Modifier
+                                                .height(40.dp)
+                                                .clip(CircleShape)
+                                                .background(com.mawaqit.app.ui.theme.PrimaryBlue),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            IconButton(onClick = { viewModel.previewAzan(option) }) {
+                                                Icon(Icons.Filled.PlayArrow, contentDescription = stringResource(R.string.settings_preview), tint = androidx.compose.ui.graphics.Color.White)
+                                            }
                                         }
                                     }
                                 }
@@ -281,7 +294,10 @@ fun OnboardingScreen(
                             }
                         }
                         Spacer(Modifier.height(16.dp))
-                        OnboardPrimaryButton(stringResource(R.string.onboard_continue)) { step = 4 }
+                        OnboardPrimaryButton(stringResource(R.string.onboard_continue)) {
+                            viewModel.stopPreview()   // don't let a preview ring on page 5
+                            step = 4
+                        }
                         Spacer(Modifier.height(4.dp))
                         SkipLink(vm = viewModel, language = language) { onComplete() }
                     }
