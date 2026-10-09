@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mawaqit.app.alarm.AzanPlayer
 import com.mawaqit.app.alarm.AzanType
-import com.mawaqit.app.data.prefs.AzanOption
 import com.mawaqit.app.data.prefs.PrefsRepository
 import com.mawaqit.app.data.repository.PrayerRepository
 import com.mawaqit.app.util.LocationHelper
@@ -74,18 +73,16 @@ class OnboardingViewModel @Inject constructor(
         viewModelScope.launch { prefs.setAppLanguage(language) }
     }
 
-    fun setSelectedAzan(option: AzanOption) {
-        viewModelScope.launch { prefs.setSelectedAzan(option) }
+    fun setSelectedAzan(option: AzanType) {
+        viewModelScope.launch { prefs.setSelectedAzan(option.storage) }
     }
 
     private var previewJob: Job? = null
 
-    fun previewAzan(option: AzanOption) {
+    fun previewAzan(option: AzanType) {
         previewJob?.cancel()
         previewJob = viewModelScope.launch(Dispatchers.IO) {
-            azanPlayer.playAzan(
-                if (option == AzanOption.MAKKAH) AzanType.MAKKAH else AzanType.DEFAULT
-            )
+            azanPlayer.playAzan(option)
             delay(5000)
             azanPlayer.stop()
         }

@@ -650,3 +650,68 @@ That's it. Those 3 reads = full context, every time. 🚀
   Onboarding + Home fallback the granted path runs checkLocationSettings ->
   ResolvableApiException.startResolutionForResult -> polls LocationManager for the
   radio turning on before useGpsLocation()/useMyLocation() runs. Build GREEN (573744b).
+
+---
+
+## [PHASE-10] "Azan Voices" — built (build pending Actions verification)
+
+**User-directed upgrade, replacing the 3 silent stubs with 7 real, sourced recordings.**
+
+### What shipped
+- **7 real MP3s in `res/raw/`** (total ~9.4MB audio, est. APK ~15MB — well under the 25MB cap):
+  6 user-selectable voices credited by muezzin name + 1 Fajr-only file.
+  | raw file | Muezzin | Source |
+  |---|---|---|
+  | `azan_alafasy.mp3` | Mishary Rashid Alafasy | AlAdhan CDN `a4` |
+  | `azan_abdulbasit.mp3` | Abdulbasit Abdusamad | alfurqan.online (EveryAyah lineage) |
+  | `azan_ali_mala.mp3` | Ali Ibn Ahmad Mala (Makkah) | alfurqan.online |
+  | `azan_nafees.mp3` | Ahmad al-Nafees | AlAdhan CDN `a1` |
+  | `azan_ozcan.mp3` | Hafiz Mustafa Ozcan (Turkey) | AlAdhan CDN `a2` |
+  | `azan_zahrani.mp3` | Mansour Al-Zahrani | AlAdhan CDN `a11` |
+  | `azan_fajr.mp3` | *not credited — labels itself "Fajr Adhan"* | muslim-alim.com `AdhanSoubh.mp3` |
+- **`AzanOption` DELETED.** One enum — `AzanType` — now carries `labelRes` + `resId` +
+  `userSelectable` + `storage`. This removed ~6 `if (option == MAKKAH) ... else DEFAULT`
+  chains; adding a voice is now 1 enum line + 1 file + EN string + UR string.
+  `AzanType.FAJR` is the only non-selectable entry (Rule 14), so pickers iterate
+  `AzanType.choices`.
+- Sources were re-encoded with ffmpeg (`-ac 1 -ar 24000 -b:a 56k`, lead/trail silence
+  trimmed) — originals were 3–5MB each and would have breached the size budget.
+
+### Audio provenance & the honest limitation
+- **AlAdhan** is the app's own prayer-times API, so its published attributions are the
+  strongest evidence available. It has **no Fajr file**.
+- **alfurqan.online** independently names 32 athans; it and AlAdhan both name
+  **Mansour Al-Zahrani** — the one muezzin corroborated across two unrelated sources.
+- **muslim-alim.com** is the only source found that explicitly labels a Fajr adhan
+  (Arabic page: *"استمع إلى أذان الفجر"*). It credits no performer, so we claim none.
+- ⚠️ **Voice identity could NOT be verified from audio.** An audio fingerprint was built
+  and **failed its own control test** (the 3 files AlAdhan all labels "Alafasy" scored low
+  against each other). Attributions rest on the sources' own published labels, not on
+  listening. **User must audition the voices before release.**
+- **`Kiwifu/adhan-mp3` REJECTED** (no license, 15 stars) despite having the prettiest names
+  (Al-Qatami, Al-Banna, Al-Hussary, Al-Filkawi). `islamcan.com` also rejected (no names at all).
+- ⚠️ **LICENSING UNRESOLVED** — none of the three sources publishes a formal licence.
+  Needed before Play Store release.
+
+### Docs patched (Rule 5 — before code)
+- `RULES.md` Rule 11 (azan file count/size budget) and new Rule 14A (one enum; never
+  credit a muezzin we cannot source).
+- `ASSETS.md` §1: new file table, why each source is trusted, the rejected list, the
+  licensing note, new audio specs.
+- `DATA_SCHEMA.md`: `SELECTED_AZAN` now stores `AzanType.storage`.
+- `CI_CD.md`: stale "Codespaces is primary" header rewritten — Actions IS primary.
+- `.gitignore`: `API_KEYS.txt` added (it lives in the parent folder, outside the repo,
+  so it was never at risk — cheap insurance only).
+
+### Backward compatibility
+`selected_azan` used to hold `"default"`/`"makkah"`. `AzanType.fromStorage()` maps those to
+`ALAFASY` and `ALI_MALA` respectively, so existing installs keep a sane choice.
+Note: alarms frozen at plan time carry the storage key, so a Settings change only applies
+to the next plan refresh (unchanged PHASE-3.1 behaviour).
+
+### Phone test checklist (user)
+1. Onboarding page 4 lists all 6 muezzins by name, each with a working preview
+2. Settings → Azan Sound → same 6, select persists
+3. **Confirm each label matches the actual voice** (the one thing I could not verify)
+4. All 5 prayer toggles still arm; azan still fires at prayer time
+5. Urdu mode shows the muezzin names in Arabic script

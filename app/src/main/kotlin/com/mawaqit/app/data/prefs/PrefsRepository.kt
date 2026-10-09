@@ -19,9 +19,6 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** The Azan choice for the 4 non-Fajr prayers (Fajr is ALWAYS azan_fajr, Rule 14). */
-enum class AzanOption { DEFAULT, MAKKAH }
-
 /** All pref key names — exactly as listed in DATA_SCHEMA.md. */
 object PrefKeys {
     // Location
@@ -212,27 +209,18 @@ class PrefsRepository @Inject constructor(
         store.edit { it[alarmKey(prayer)] = enabled }
     }
 
-    // ── Azan selection (PHASE_3 scheduling; UI picker arrives in PHASE_8) ──
+    // ── Azan selection ──
+    // Stored as the raw `selected_azan` string; the mapping to AzanType (which lives in
+    // the alarm layer, so data never depends on it) happens at the call sites via
+    // AzanType.fromStorage(). This also keeps legacy "default"/"makkah" values readable.
+    val selectedAzan: Flow<String> =
+        store.data.map { prefs -> prefs[stringPreferencesKey(PrefKeys.SELECTED_AZAN)].orEmpty() }
 
-    val selectedAzan: Flow<AzanOption> =
-        store.data.map { prefs ->
-            when (prefs[stringPreferencesKey(PrefKeys.SELECTED_AZAN)]) {
-                "makkah" -> AzanOption.MAKKAH
-                else -> AzanOption.DEFAULT
-            }
-        }
+    suspend fun getSelectedAzanOnce(): String =
+        store.data.first()[stringPreferencesKey(PrefKeys.SELECTED_AZAN)].orEmpty()
 
-    suspend fun getSelectedAzanOnce(): AzanOption =
-        when (store.data.first()[stringPreferencesKey(PrefKeys.SELECTED_AZAN)]) {
-            "makkah" -> AzanOption.MAKKAH
-            else -> AzanOption.DEFAULT
-        }
-
-    suspend fun setSelectedAzan(option: AzanOption) {
-        store.edit {
-            it[stringPreferencesKey(PrefKeys.SELECTED_AZAN)] =
-                if (option == AzanOption.MAKKAH) "makkah" else "default"
-        }
+    suspend fun setSelectedAzan(storage: String) {
+        store.edit { it[stringPreferencesKey(PrefKeys.SELECTED_AZAN)] = storage }
     }
 
     // ── Daily Ayah cache (PHASE_4; UmmahAPI source arrives in PHASE_6) ─────

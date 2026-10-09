@@ -8,7 +8,6 @@ import android.os.Build
 import android.util.Log
 import com.mawaqit.app.MainActivity
 import com.mawaqit.app.data.model.PrayerName
-import com.mawaqit.app.data.prefs.AzanOption
 import com.mawaqit.app.data.prefs.PrefsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -68,10 +67,9 @@ class AlarmScheduler @Inject constructor(
     }
 
     /** Fajr is always the special azan (Rule 14); others follow the user's choice. */
-    suspend fun azanTypeFor(prayer: PrayerName): AzanType = when {
-        prayer == PrayerName.FAJR -> AzanType.FAJR
-        prefs.getSelectedAzanOnce() == AzanOption.MAKKAH -> AzanType.MAKKAH
-        else -> AzanType.DEFAULT
+    suspend fun azanTypeFor(prayer: PrayerName): AzanType = when (prayer) {
+        PrayerName.FAJR -> AzanType.FAJR
+        else -> AzanType.fromStorage(prefs.getSelectedAzanOnce())
     }
 
     /**
@@ -102,7 +100,7 @@ class AlarmScheduler @Inject constructor(
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             action = AlarmReceiver.ACTION_PRAYER_ALARM
             putExtra(AlarmReceiver.EXTRA_PRAYER_NAME, AzanService.TEST_PRAYER_NAME)
-            putExtra(AlarmReceiver.EXTRA_AZAN_TYPE, AzanType.DEFAULT.name)
+            putExtra(AlarmReceiver.EXTRA_AZAN_TYPE, AzanType.DEFAULT.storage)
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
@@ -143,7 +141,9 @@ class AlarmScheduler @Inject constructor(
         Intent(context, AlarmReceiver::class.java).apply {
             action = AlarmReceiver.ACTION_PRAYER_ALARM
             putExtra(AlarmReceiver.EXTRA_PRAYER_NAME, prayer.name)
-            putExtra(AlarmReceiver.EXTRA_AZAN_TYPE, azanType.name)
+            // the STORAGE key, frozen at plan time so a later Settings change cannot
+            // retro-alter an alarm that is already armed (PHASE-3.1 design).
+            putExtra(AlarmReceiver.EXTRA_AZAN_TYPE, azanType.storage)
         }
 
     private fun pendingIntentFor(scheduled: PlannedAlarm): PendingIntent =

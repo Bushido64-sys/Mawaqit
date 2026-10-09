@@ -50,7 +50,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.mawaqit.app.R
 import com.mawaqit.app.data.model.PrayerName
-import com.mawaqit.app.data.prefs.AzanOption
+import com.mawaqit.app.alarm.AzanType
 import com.mawaqit.app.ui.theme.PrimaryGold
 import com.mawaqit.app.ui.components.OrnamentHeader
 import com.mawaqit.app.ui.theme.SurfaceWhite
@@ -172,7 +172,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(if (state.selectedAzan == AzanOption.MAKKAH) stringResource(R.string.azan_makkah) else stringResource(R.string.azan_default))
+                Text(stringResource(state.selectedAzan.labelRes))
                 TextButton(onClick = { showAzanSheet = true }) { Text(stringResource(R.string.settings_change)) }
             }
             Text(stringResource(R.string.settings_azan_volume), fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
@@ -370,13 +370,13 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         }, sheetState = sheetState) {
             Column(Modifier.padding(16.dp)) {
                 Text(stringResource(R.string.settings_azan_sound), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                AzanOption.entries.forEach { option ->
+                AzanType.choices.forEach { option ->
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 6.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(if (option == AzanOption.MAKKAH) stringResource(R.string.azan_makkah) else stringResource(R.string.azan_default))
+                        Text(stringResource(option.labelRes))
                         Row {
                             TextButton(onClick = { viewModel.previewAzan(option) }) { Text(stringResource(R.string.settings_preview)) }
                             Button(

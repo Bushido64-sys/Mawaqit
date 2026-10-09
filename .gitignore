@@ -25,6 +25,10 @@ keystore.properties
 *.keystore
 *.jks
 
+# API keys / secrets — the parent working folder holds API_KEYS.txt; never let it
+# sneak into the repo if a file is moved here.
+API_KEYS.txt
+
 # Profiling
 *.hprof
 

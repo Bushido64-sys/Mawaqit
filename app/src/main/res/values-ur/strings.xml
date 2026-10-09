@@ -55,4 +55,15 @@
     <string name="get_started">شروع کریں</string>
 
     <string name="calendar_open">نماز کیلنڈر</string>
+
+    <!-- Azan voices (Rule 14A). Muezzin names are proper nouns written in Arabic script,
+         the conventional form in Urdu. The Fajr voice credits no performer, so this says
+         only "Fajr Adhan" and claims nothing. -->
+    <string name="azan_fajr">فجر کا اذان</string>
+    <string name="azan_alafasy">مشاری راشد العفاسی</string>
+    <string name="azan_abdulbasit">عبد الباسط عبد الصمد</string>
+    <string name="azan_ali_mala">علی بن احمد ملا</string>
+    <string name="azan_nafees">احمد نفیس</string>
+    <string name="azan_ozcan">حافظ مصطفی اوزجان</string>
+    <string name="azan_zahrani">منصور الزاہرانی</string>
 </resources>

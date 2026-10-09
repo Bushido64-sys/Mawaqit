@@ -83,16 +83,9 @@ class AzanService : Service() {
         }
 
         // 3. Play the azan (prepare() is synchronous → Dispatchers.IO).
-        val azanType = intent
-            ?.getStringExtra(AlarmReceiver.EXTRA_AZAN_TYPE)
-            ?.let { type ->
-                try {
-                    AzanType.valueOf(type)
-                } catch (_: IllegalArgumentException) {
-                    AzanType.DEFAULT
-                }
-            }
-            ?: AzanType.DEFAULT
+        // The extra holds the AzanType NAME the alarm was planned with, frozen at plan
+        // time so a later Settings change does not retro-alter an armed alarm.
+        val azanType = AzanType.fromStorage(intent?.getStringExtra(AlarmReceiver.EXTRA_AZAN_TYPE))
         serviceScope.launch(Dispatchers.IO) { azanPlayer.playAzan(azanType) }
 
         // 4. Rule 14: hard 5-minute cutoff, whichever comes first.

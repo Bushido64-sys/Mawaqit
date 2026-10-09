@@ -24,6 +24,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -48,7 +49,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
 import com.mawaqit.app.R
-import com.mawaqit.app.data.prefs.AzanOption
+import com.mawaqit.app.alarm.AzanType
 import com.mawaqit.app.data.repository.FALLBACK_AYAHS
 import com.mawaqit.app.ui.components.VideoBackground
 import com.mawaqit.app.ui.theme.PrimaryGold
@@ -68,7 +69,7 @@ fun OnboardingScreen(
 ) {
     var step by remember { mutableStateOf(0) }
     var language by remember { mutableStateOf("en") }
-    var azan by remember { mutableStateOf(AzanOption.DEFAULT) }
+    var azan by remember { mutableStateOf(AzanType.DEFAULT) }
     var selectedCity by remember { mutableStateOf<String?>(null) }
     var pickedCountry by remember { mutableStateOf<String?>(null) }
     val countries by viewModel.countries.collectAsStateWithLifecycle()
@@ -243,14 +244,14 @@ fun OnboardingScreen(
                         Spacer(Modifier.height(8.dp))
                         Text(stringResource(R.string.onboard_page4_body), fontSize = 14.sp, color = MaterialTheme.colorScheme.outline, textAlign = TextAlign.Center)
                         Spacer(Modifier.height(16.dp))
-                        listOf(AzanOption.DEFAULT to "Default Azan", AzanOption.MAKKAH to "Makkah Azan").forEach { (opt, label) ->
+                        AzanType.choices.forEach { option ->
                             Card(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                                border = if (azan == opt) BorderStroke(2.5.dp, com.mawaqit.app.ui.theme.PrimaryBlue) else BorderStroke(1.dp, PrimaryGold.copy(alpha = 0.35f)),
-                                colors = CardDefaults.cardColors(containerColor = if (azan == opt) com.mawaqit.app.ui.theme.ChipBg else SurfaceWhite),
+                                border = if (azan == option) BorderStroke(2.5.dp, com.mawaqit.app.ui.theme.PrimaryBlue) else BorderStroke(1.dp, PrimaryGold.copy(alpha = 0.35f)),
+                                colors = CardDefaults.cardColors(containerColor = if (azan == option) com.mawaqit.app.ui.theme.ChipBg else SurfaceWhite),
                                 onClick = {
-                                    azan = opt
-                                    viewModel.setSelectedAzan(opt)
+                                    azan = option
+                                    viewModel.setSelectedAzan(option)
                                 }
                             ) {
                                 Row(
@@ -258,7 +259,7 @@ fun OnboardingScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(label, fontWeight = FontWeight.Medium)
+                                    Text(stringResource(option.labelRes), fontWeight = FontWeight.Medium)
                                     Box(
                                         Modifier
                                             .height(40.dp)
@@ -266,8 +267,8 @@ fun OnboardingScreen(
                                             .background(com.mawaqit.app.ui.theme.PrimaryBlue),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        androidx.compose.material3.IconButton(onClick = { viewModel.previewAzan(opt) }) {
-                                            Icon(Icons.Filled.PlayArrow, contentDescription = "Play preview", tint = androidx.compose.ui.graphics.Color.White)
+                                        IconButton(onClick = { viewModel.previewAzan(option) }) {
+                                            Icon(Icons.Filled.PlayArrow, contentDescription = stringResource(R.string.settings_preview), tint = androidx.compose.ui.graphics.Color.White)
                                         }
                                     }
                                 }

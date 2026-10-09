@@ -153,9 +153,15 @@ The bearing shown is where to face as closely as reasonably possible.</string>
     <string name="settings_exact_alarm_off">Exact alarms are off</string>
     <string name="settings_gps_location">GPS location</string>
     <string name="settings_aladhan">AlAdhan.com</string>
-    <!-- Azan options — NO madina entry: no such audio file in the MVP (RULES.md Rule 11) -->
-    <string name="azan_default">Default Azan</string>
-    <string name="azan_makkah">Makkah Azan</string>
+    <!-- Azan voices (Rule 14A). Muezzin names only where the source credits the
+         performer — azan_fajr has no attributed performer, so it claims nothing. -->
+    <string name="azan_fajr">Fajr Adhan</string>
+    <string name="azan_alafasy">Mishary Rashid Alafasy</string>
+    <string name="azan_abdulbasit">Abdulbasit Abdusamad</string>
+    <string name="azan_ali_mala">Ali Ibn Ahmad Mala</string>
+    <string name="azan_nafees">Ahmad al-Nafees</string>
+    <string name="azan_ozcan">Hafiz Mustafa Ozcan</string>
+    <string name="azan_zahrani">Mansour Al-Zahrani</string>
 
     <!-- Splash cards (PHASE_9) -->
     <string name="splash_card1_h">Send Blessings Upon the Prophet ﷺ</string>

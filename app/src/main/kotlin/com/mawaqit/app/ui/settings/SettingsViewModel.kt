@@ -8,8 +8,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mawaqit.app.alarm.AlarmRefreshManager
+import com.mawaqit.app.alarm.AzanPlayer
+import com.mawaqit.app.alarm.AzanType
 import com.mawaqit.app.data.model.PrayerName
-import com.mawaqit.app.data.prefs.AzanOption
 import com.mawaqit.app.data.prefs.PrefsRepository
 import com.mawaqit.app.data.repository.PrayerRepository
 import com.mawaqit.app.util.LocationHelper
@@ -24,7 +25,7 @@ import kotlinx.coroutines.launch
 
 data class SettingsUiState(
     val alarmStates: Map<PrayerName, Boolean> = emptyMap(),
-    val selectedAzan: AzanOption = AzanOption.DEFAULT,
+    val selectedAzan: AzanType = AzanType.DEFAULT,
     val azanVolume: Float = 1f,
     val azanForceAlarm: Boolean = false,
     val appLanguage: String = "en",
@@ -44,7 +45,7 @@ class SettingsViewModel @Inject constructor(
     private val refreshManager: AlarmRefreshManager,
     private val repository: PrayerRepository,
     private val locationHelper: LocationHelper,
-    private val azanPlayer: com.mawaqit.app.alarm.AzanPlayer,
+    private val azanPlayer: AzanPlayer,
     private val countriesApi: com.mawaqit.app.data.api.CountriesNowApiService,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
@@ -67,7 +68,7 @@ class SettingsViewModel @Inject constructor(
                 prefs.savedCityName
             ) { azan, volume, force, lang, city ->
                 SettingsUiState(
-                    selectedAzan = azan,
+                    selectedAzan = AzanType.fromStorage(azan),
                     azanVolume = volume,
                     azanForceAlarm = force,
                     appLanguage = lang,
@@ -129,8 +130,8 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun setSelectedAzan(option: AzanOption) {
-        viewModelScope.launch { prefs.setSelectedAzan(option) }
+    fun setSelectedAzan(option: AzanType) {
+        viewModelScope.launch { prefs.setSelectedAzan(option.storage) }
     }
 
     fun setAzanVolume(volume: Float) {
@@ -235,13 +236,10 @@ class SettingsViewModel @Inject constructor(
      *  kill freshly started playback. */
     private var previewJob: kotlinx.coroutines.Job? = null
 
-    fun previewAzan(option: AzanOption) {
+    fun previewAzan(option: AzanType) {
         previewJob?.cancel()
         previewJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            azanPlayer.playAzan(
-                if (option == AzanOption.MAKKAH) com.mawaqit.app.alarm.AzanType.MAKKAH
-                else com.mawaqit.app.alarm.AzanType.DEFAULT
-            )
+            azanPlayer.playAzan(option)
             kotlinx.coroutines.delay(5000)
             azanPlayer.stop()
         }

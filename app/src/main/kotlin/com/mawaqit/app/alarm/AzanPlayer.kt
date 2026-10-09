@@ -43,7 +43,7 @@ class AzanPlayer @Inject constructor(
             player.setAudioAttributes(alarmAttributes())
             player.setDataSource(
                 context,
-                Uri.parse("android.resource://${context.packageName}/${azanType.audioResId()}")
+                Uri.parse("android.resource://${context.packageName}/${azanType.resId}")
             )
             player.isLooping = false
             player.setVolume(volume, volume)
