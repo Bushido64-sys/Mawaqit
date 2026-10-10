@@ -2,7 +2,7 @@ package com.mawaqit.app.ui.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mawaqit.app.alarm.AzanPlayer
+import com.mawaqit.app.alarm.AzanPreviewPlayer
 import com.mawaqit.app.alarm.AzanType
 import com.mawaqit.app.data.prefs.PrefsRepository
 import com.mawaqit.app.data.repository.PrayerRepository
@@ -19,7 +19,7 @@ class OnboardingViewModel @Inject constructor(
     private val prefs: PrefsRepository,
     private val repository: PrayerRepository,
     private val locationHelper: LocationHelper,
-    private val azanPlayer: AzanPlayer,
+    private val azanPreviewPlayer: AzanPreviewPlayer,
     private val countriesApi: com.mawaqit.app.data.api.CountriesNowApiService
 ) : ViewModel() {
 
@@ -79,17 +79,32 @@ class OnboardingViewModel @Inject constructor(
 
     private var previewJob: Job? = null
 
+    /** Which voice is currently previewing, so tapping it again stops early. */
+    @Volatile
+    private var previewingOption: AzanType? = null
+
+    /** ~18s excerpt from 8s in (AzanPreviewPlayer), NOT the shared AzanPlayer:
+     *  AzanPlayer is the singleton the azan SERVICE injects, so a preview that reused
+     *  it could silence a real prayer azan (PHASE-10.2). Tapping the SAME option again
+     *  stops the preview so the user can re-listen without waiting. */
     fun previewAzan(option: AzanType) {
+        if (previewingOption == option) {
+            stopPreview()
+            return
+        }
+        previewingOption = option
         previewJob?.cancel()
         previewJob = viewModelScope.launch(Dispatchers.IO) {
-            azanPlayer.playAzan(option)
-            delay(5000)
-            azanPlayer.stop()
+            azanPreviewPlayer.playPreview(option)
+            delay(AzanPreviewPlayer.PREVIEW_LENGTH_MS)
+            azanPreviewPlayer.stopPreview()
+            previewingOption = null
         }
     }
 
     fun stopPreview() {
         previewJob?.cancel()
-        viewModelScope.launch(Dispatchers.IO) { azanPlayer.stop() }
+        previewingOption = null
+        viewModelScope.launch(Dispatchers.IO) { azanPreviewPlayer.stopPreview() }
     }
 }

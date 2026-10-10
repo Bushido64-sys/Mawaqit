@@ -8,7 +8,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mawaqit.app.alarm.AlarmRefreshManager
-import com.mawaqit.app.alarm.AzanPlayer
+import com.mawaqit.app.alarm.AzanPreviewPlayer
 import com.mawaqit.app.alarm.AzanType
 import com.mawaqit.app.data.model.PrayerName
 import com.mawaqit.app.data.prefs.PrefsRepository
@@ -45,7 +45,7 @@ class SettingsViewModel @Inject constructor(
     private val refreshManager: AlarmRefreshManager,
     private val repository: PrayerRepository,
     private val locationHelper: LocationHelper,
-    private val azanPlayer: AzanPlayer,
+    private val azanPreviewPlayer: AzanPreviewPlayer,
     private val countriesApi: com.mawaqit.app.data.api.CountriesNowApiService,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
@@ -231,23 +231,38 @@ class SettingsViewModel @Inject constructor(
         _state.value = _state.value.copy(locationError = null)
     }
 
-    /** ~5s preview on Dispatchers.IO, then stop (ASSETS.md / PHASE_8 spec).
-     *  A new preview cancels the previous one's trailing stop() so it can't
-     *  kill freshly started playback. */
+    /** Which voice is currently previewing, so tapping it again stops early. Not part
+     *  of the persisted UiState — it is transient interaction, not app settings. */
+    @Volatile
+    private var previewingOption: AzanType? = null
+
+    /** Voice auditions use AzanPreviewPlayer, never AzanPlayer (PHASE-10.2):
+     *  AzanPlayer is the singleton AzanService injects, so a preview sharing it could
+     *  silence a real prayer azan. */
     private var previewJob: kotlinx.coroutines.Job? = null
 
+    /** Plays an ~18s excerpt of [option] from 8s in — see AzanPreviewPlayer for why it
+     *  does not start at 0. Tapping the SAME option again stops the preview early so
+     *  the user can re-listen without waiting. */
     fun previewAzan(option: AzanType) {
+        if (previewingOption == option) {
+            stopAzanPreview()
+            return
+        }
+        previewingOption = option
         previewJob?.cancel()
         previewJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            azanPlayer.playAzan(option)
-            kotlinx.coroutines.delay(5000)
-            azanPlayer.stop()
+            azanPreviewPlayer.playPreview(option)
+            kotlinx.coroutines.delay(AzanPreviewPlayer.PREVIEW_LENGTH_MS)
+            azanPreviewPlayer.stopPreview()
+            previewingOption = null
         }
     }
 
     fun stopAzanPreview() {
         previewJob?.cancel()
         previewJob = null
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { azanPlayer.stop() }
+        previewingOption = null
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { azanPreviewPlayer.stopPreview() }
     }
 }
