@@ -811,3 +811,59 @@ the `Play preview` hardcoded English on the onboarding play button now uses
   both string XMLs well-formed, all `AzanType` label/res pairs resolve in both locales,
   `selectedFromStorage` never leaks FAJR, cancel-all still matches PendingIntents despite
   the changed extras (extras are not part of `Intent.filterEqual`).
+
+---
+
+## [PHASE-10.2] Preview you can actually judge — separate player, better excerpt (89df5f2, GREEN)
+
+**User report that drove this:** "few starter seconds of preview of the adhan which i
+couldnt hear proper and choose". Root-caused to TWO bugs, not one.
+
+**Bug 1 — preview was 5 seconds** (`delay(5000)`, hardcoded in both ViewModels).
+
+**Bug 2 (the real one) — it started at second ZERO.** An adhan opens with
+*"Allahu Akbar"* x4 — slow, chant-like, heavy mosque reverb. Measured opening-phrase
+lengths: Alafasy **22s**, Abdulbasit 9s, Ozcan 4s, Fajr 5s. So the entire 5s preview sat
+inside the least distinctive part of the recording — the user was never hearing the
+muezzin's voice at all, which is exactly why they couldn't choose.
+
+### What shipped
+- **NEW `alarm/AzanPreviewPlayer.kt`** — `@Singleton` with its **own** `MediaPlayer`.
+  This is the structural fix the audit asked for: `AzanPlayer` stays a singleton injected
+  by `AzanService`, and the preview player is one it never sees, so a preview cannot
+  silence a ringing prayer azan **by construction** rather than by discipline.
+  - `playPreview()` — `prepare()` → **`seekTo(8_000)`** → `start()`
+  - `stopPreview()` — stops + releases
+  - `USAGE_MEDIA` (not `USAGE_ALARM`), **no audio focus** — the preview follows normal
+    media volume so it can never be inaudible because the alarm volume is low.
+    The real azan keeps `USAGE_ALARM` per Rule 14, unchanged.
+  - Reads your `AZAN_VOLUME` pref so preview level matches the alarm
+- **Both ViewModels** now inject `AzanPreviewPlayer` instead of `AzanPlayer`:
+  - 18s excerpt from 8s (`AzanPreviewPlayer.PREVIEW_LENGTH_MS` / `START_OFFSET_MS`)
+  - **tapping the SAME voice's play button again stops the preview early**, so you can
+    re-listen without waiting (`@Volatile previewingOption` guard; it is transient
+    interaction, deliberately NOT in the persisted UiState)
+- Constants: `START_OFFSET_MS = 8_000` (Int, feeds `seekTo`), `PREVIEW_LENGTH_MS = 18_000L`
+  (Long, feeds `kotlinx.delay`)
+
+### Untouched, proven by diff
+`AzanPlayer`, `AzanService`, `AlarmScheduler`, `AlarmReceiver`, `PlannedAlarm`,
+`AzanType` — `git diff HEAD` for all six produces **no output**.
+
+### Build log
+- Build #1 **RED**: `None of the following functions can be called with the arguments
+  supplied` at both `delay(AzanPreviewPlayer.PREVIEW_LENGTH_MS)` call sites.
+  Cause: `const val X = 18_000` infers **Int**, and `kotlinx.delay()` needs **Long** —
+  Kotlin does not widen implicitly. My static checks only verified imports/braces, so this
+  slipped through. Fix: `18_000L`. `START_OFFSET_MS` stays Int for `seekTo`.
+- Added a static type-audit for exactly this class of bug (const type vs the signature it
+  feeds). Lesson recorded: **import/brace checks do not catch type mismatches.**
+- Build #2 (`89df5f2`) **GREEN**.
+
+### Phone test checklist
+1. Onboarding page 4 → tap play on any of the 6 muezzins. You should hear ~18s of actual
+   melody starting ~8s in — NOT the opening chant.
+2. Tap the SAME play button again while it is playing → stops immediately.
+3. Settings → Azan Sound → same behaviour, both screens work.
+4. Set alarm volume low, then preview → **still clearly audible** (uses media volume now).
+5. Real prayer azan still rings on the alarm stream and is unaffected by previews.
