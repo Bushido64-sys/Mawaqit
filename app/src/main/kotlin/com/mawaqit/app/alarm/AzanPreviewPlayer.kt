@@ -96,8 +96,8 @@ class AzanPreviewPlayer @Inject constructor(
         /** Where the excerpt begins (ms). Skips the "Allahu Akbar" x4 opening. */
         const val START_OFFSET_MS = 8_000
 
-        /** How long the excerpt plays (ms). Covers a full shahada phrase. */
-        const val PREVIEW_LENGTH_MS = 18_000
+        /** How long the excerpt plays (ms). Long because it feeds kotlinx's delay(). */
+        const val PREVIEW_LENGTH_MS = 18_000L
 
         private fun previewAttributes(): AudioAttributes =
             AudioAttributes.Builder()
