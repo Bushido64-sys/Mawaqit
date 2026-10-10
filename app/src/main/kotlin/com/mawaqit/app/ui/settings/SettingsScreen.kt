@@ -52,6 +52,7 @@ import com.mawaqit.app.R
 import com.mawaqit.app.data.model.PrayerName
 import com.mawaqit.app.alarm.AzanType
 import com.mawaqit.app.ui.theme.PrimaryGold
+import com.mawaqit.app.ui.theme.PrimaryBlue
 import com.mawaqit.app.ui.components.OrnamentHeader
 import com.mawaqit.app.ui.theme.SurfaceWhite
 import androidx.hilt.navigation.compose.hiltViewModel
