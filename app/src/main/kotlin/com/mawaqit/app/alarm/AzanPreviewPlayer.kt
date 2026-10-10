@@ -28,8 +28,12 @@ import javax.inject.Singleton
  * Playing from 0 therefore gave the user no way to tell two muezzins apart, which is
  * why the original 5s preview was unusable.
  *
- * So: skip to [START_OFFSET_MS] and play [PREVIEW_LENGTH_MS] — long enough to hear a
- * full shahada phrase, short enough to audition several voices without waiting.
+ * So: each voice skips to its own measured phrase boundary ([AzanType.previewStartSec])
+ * and plays [PREVIEW_LENGTH_MS] — long enough to hear a full shahada phrase, short
+ * enough to audition several voices without waiting.
+ *
+ * The Settings/onboarding UI reads [previewProgress] to drive the play/pause toggle and
+ * the progress bar, so what the user SEES is what the audio is actually doing.
  *
  * Uses USAGE_MEDIA so the preview follows the phone's normal media volume and is never
  * silenced by a quiet ringer (a preview nobody can hear is worse than no preview).
@@ -42,9 +46,13 @@ class AzanPreviewPlayer @Inject constructor(
 ) {
     private var mediaPlayer: MediaPlayer? = null
 
+    /** Offset the current preview started at, so [previewProgress] can subtract it. */
+    private var startOffsetMs: Int = 0
+
     /**
-     * Play a ~18s excerpt of [azanType], starting at [START_OFFSET_MS].
-     * Safe to call repeatedly — each call replaces any preview still playing.
+     * Play a ~25s excerpt of [azanType], starting at that voice's own measured
+     * [AzanType.previewStartSec]. Safe to call repeatedly — each call replaces any
+     * preview still playing.
      */
     fun playPreview(azanType: AzanType) {
         stopPreview() // never two previews at once
@@ -65,15 +73,28 @@ class AzanPreviewPlayer @Inject constructor(
             // prepare() is synchronous and blocks on the small bundled file, so this
             // whole method must run off the main thread (callers use Dispatchers.IO).
             player.prepare()
-            player.seekTo(START_OFFSET_MS)
+            val offsetMs = azanType.previewStartSec * 1_000
+            player.seekTo(offsetMs)
             player.start()
             mediaPlayer = player
+            startOffsetMs = offsetMs
         } catch (e: Exception) {
             // A bad resId or an unseekable file must never crash the Settings screen.
             Log.e(TAG, "Azan preview failed for $azanType", e)
             try { player.release() } catch (_: Exception) { /* already released */ }
             mediaPlayer = null
         }
+    }
+
+    /** How far along the excerpt we are, 0f..1f, read from the player itself so the
+     *  UI can never drift out of sync with the audio. Null when nothing is previewing. */
+    fun previewProgress(): Float? {
+        val mp = mediaPlayer ?: return null
+        if (!mp.isPlaying) return null
+        // currentPosition is absolute in the file; subtract the offset we seeked to.
+        val into = mp.currentPosition - startOffsetMs
+        if (into < 0) return 0f
+        return (into.toFloat() / PREVIEW_LENGTH_MS).coerceIn(0f, 1f)
     }
 
     /** Stop the preview and release its player. Always safe to call. */
@@ -93,11 +114,8 @@ class AzanPreviewPlayer @Inject constructor(
     companion object {
         private const val TAG = "Mawaqit"
 
-        /** Where the excerpt begins (ms). Skips the "Allahu Akbar" x4 opening. */
-        const val START_OFFSET_MS = 8_000
-
         /** How long the excerpt plays (ms). Long because it feeds kotlinx's delay(). */
-        const val PREVIEW_LENGTH_MS = 18_000L
+        const val PREVIEW_LENGTH_MS = 25_000L
 
         private fun previewAttributes(): AudioAttributes =
             AudioAttributes.Builder()

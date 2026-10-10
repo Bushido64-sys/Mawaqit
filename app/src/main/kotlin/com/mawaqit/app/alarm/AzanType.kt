@@ -20,14 +20,24 @@ enum class AzanType(
     val userSelectable: Boolean,
     /** What PrefsRepository stores in `selected_azan`. */
     val storage: String,
+    /**
+     * Where this voice's preview excerpt begins, in SECONDS.
+     *
+     * Per-voice because an adhan's opening "Allahu Akbar" x4 has no fixed length — it
+     * runs 22s on Alafasy, 9s on Abdulbasit, 4-8s on the rest. One shared offset would
+     * start some voices mid-phrase. Each value below is a measured phrase boundary
+     * (end of a >0.7s silence) that sits just past that opening chant, so the preview
+     * opens cleanly on the shahada — the part that actually identifies the muezzin.
+     */
+    val previewStartSec: Int,
 ) {
-    ALAFASY(R.string.azan_alafasy, R.raw.azan_alafasy, userSelectable = true, storage = "alafasy"),
-    ABDULBASIT(R.string.azan_abdulbasit, R.raw.azan_abdulbasit, userSelectable = true, storage = "abdulbasit"),
-    ALI_MALA(R.string.azan_ali_mala, R.raw.azan_ali_mala, userSelectable = true, storage = "ali_mala"),
-    NAFEES(R.string.azan_nafees, R.raw.azan_nafees, userSelectable = true, storage = "nafees"),
-    OZCAN(R.string.azan_ozcan, R.raw.azan_ozcan, userSelectable = true, storage = "ozcan"),
-    ZAHRANI(R.string.azan_zahrani, R.raw.azan_zahrani, userSelectable = true, storage = "zahrani"),
-    FAJR(R.string.azan_fajr, R.raw.azan_fajr, userSelectable = false, storage = "fajr");
+    ALAFASY(R.string.azan_alafasy, R.raw.azan_alafasy, userSelectable = true, storage = "alafasy", previewStartSec = 24),
+    ABDULBASIT(R.string.azan_abdulbasit, R.raw.azan_abdulbasit, userSelectable = true, storage = "abdulbasit", previewStartSec = 15),
+    ALI_MALA(R.string.azan_ali_mala, R.raw.azan_ali_mala, userSelectable = true, storage = "ali_mala", previewStartSec = 24),
+    NAFEES(R.string.azan_nafees, R.raw.azan_nafees, userSelectable = true, storage = "nafees", previewStartSec = 15),
+    OZCAN(R.string.azan_ozcan, R.raw.azan_ozcan, userSelectable = true, storage = "ozcan", previewStartSec = 27),
+    ZAHRANI(R.string.azan_zahrani, R.raw.azan_zahrani, userSelectable = true, storage = "zahrani", previewStartSec = 15),
+    FAJR(R.string.azan_fajr, R.raw.azan_fajr, userSelectable = false, storage = "fajr", previewStartSec = 23);
 
     companion object {
         /** The voice used for the other four prayers when the user has not chosen. */

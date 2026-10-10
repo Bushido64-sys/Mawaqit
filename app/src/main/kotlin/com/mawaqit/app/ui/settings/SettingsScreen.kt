@@ -56,6 +56,17 @@ import com.mawaqit.app.ui.components.OrnamentHeader
 import com.mawaqit.app.ui.theme.SurfaceWhite
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 
 data class CalcMethod(val id: Int, val name: String)
 
@@ -79,6 +90,10 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val cities by viewModel.cities.collectAsStateWithLifecycle()
     val placesLoading by viewModel.placesLoading.collectAsStateWithLifecycle()
     val placesError by viewModel.placesError.collectAsStateWithLifecycle()
+    // Which voice is previewing + how far through — drives the animated play/pause
+    // button and the progress bar (PHASE-10.3).
+    val previewing by viewModel.previewing.collectAsStateWithLifecycle()
+    val previewProgress by viewModel.previewProgress.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showAzanSheet by remember { mutableStateOf(false) }
     var showLocationSheet by remember { mutableStateOf(false) }
@@ -377,14 +392,42 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             ) {
                 Text(stringResource(R.string.settings_azan_sound), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                 AzanType.choices.forEach { option ->
+                    val isPreviewing = previewing == option
+                    val buttonScale by animateFloatAsState(
+                        targetValue = if (isPreviewing) 1.08f else 1f,
+                        animationSpec = tween(180),
+                        label = "preview_scale"
+                    )
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 6.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(stringResource(option.labelRes))
-                        Row {
-                            TextButton(onClick = { viewModel.previewAzan(option) }) { Text(stringResource(R.string.settings_preview)) }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Play -> pause toggle beside the Select button, driven by
+                            // real playback state (user request).
+                            IconButton(
+                                onClick = { viewModel.previewAzan(option) },
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .scale(buttonScale)
+                                    .background(PrimaryBlue, CircleShape)
+                            ) {
+                                Crossfade(
+                                    targetState = isPreviewing,
+                                    animationSpec = tween(180),
+                                    label = "preview_toggle"
+                                ) { playing ->
+                                    Icon(
+                                        imageVector = if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                        contentDescription = stringResource(if (playing) R.string.settings_pause_preview else R.string.settings_preview),
+                                        tint = androidx.compose.ui.graphics.Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.width(8.dp))
                             Button(
                                 onClick = { viewModel.setSelectedAzan(option) },
                                 colors = ButtonDefaults.buttonColors(
@@ -395,6 +438,19 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                                 Text(if (state.selectedAzan == option) stringResource(R.string.settings_selected) else stringResource(R.string.settings_select))
                             }
                         }
+                    }
+                    if (isPreviewing) {
+                        Spacer(Modifier.height(4.dp))
+                        LinearProgressIndicator(
+                            progress = { previewProgress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(50)),
+                            color = PrimaryBlue,
+                            trackColor = PrimaryBlue.copy(alpha = 0.18f)
+                        )
+                        Spacer(Modifier.height(6.dp))
                     }
                 }
                 Spacer(Modifier.height(16.dp))

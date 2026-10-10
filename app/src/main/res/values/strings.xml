@@ -141,6 +141,9 @@ The bearing shown is where to face as closely as reasonably possible.</string>
     <string name="settings_prayer_times_by">Prayer times provided by</string>
     <string name="settings_change">Change</string>
     <string name="settings_preview">Preview</string>
+    <!-- PHASE-10.3: azan preview play/pause + progress -->
+    <string name="settings_pause_preview">Pause preview</string>
+    <string name="onboard_preview_playing">Playing preview\u2026 tap again to stop</string>
     <string name="settings_select">Select</string>
     <string name="settings_selected">Selected</string>
     <string name="settings_azan_volume">Azan Volume</string>

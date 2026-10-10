@@ -231,38 +231,54 @@ class SettingsViewModel @Inject constructor(
         _state.value = _state.value.copy(locationError = null)
     }
 
-    /** Which voice is currently previewing, so tapping it again stops early. Not part
-     *  of the persisted UiState — it is transient interaction, not app settings. */
-    @Volatile
-    private var previewingOption: AzanType? = null
+    // ── Azan voice preview (PHASE-10.2 / 10.3) ──────────────────────────────────
+    // Voice auditions use AzanPreviewPlayer, never AzanPlayer: AzanPlayer is the
+    // singleton AzanService injects, so a preview sharing it could silence a real
+    // prayer azan. This is separately observable so the UI can animate the button and
+    // show real progress instead of the user guessing how long is left.
 
-    /** Voice auditions use AzanPreviewPlayer, never AzanPlayer (PHASE-10.2):
-     *  AzanPlayer is the singleton AzanService injects, so a preview sharing it could
-     *  silence a real prayer azan. */
+    /** Which voice is currently previewing (null = nothing playing). */
+    private val _previewing = MutableStateFlow<AzanType?>(null)
+    val previewing: StateFlow<AzanType?> = _previewing.asStateFlow()
+
+    /** 0f..1f through the excerpt, read from the player itself so it cannot drift. */
+    private val _previewProgress = MutableStateFlow(0f)
+    val previewProgress: StateFlow<Float> = _previewProgress.asStateFlow()
+
     private var previewJob: kotlinx.coroutines.Job? = null
 
-    /** Plays an ~18s excerpt of [option] from 8s in — see AzanPreviewPlayer for why it
-     *  does not start at 0. Tapping the SAME option again stops the preview early so
-     *  the user can re-listen without waiting. */
+    /** Tapping the SAME voice's play button again stops the preview early, so the user
+     *  can re-listen without waiting out the rest of the excerpt. */
     fun previewAzan(option: AzanType) {
-        if (previewingOption == option) {
+        if (_previewing.value == option) {
             stopAzanPreview()
             return
         }
-        previewingOption = option
+        _previewing.value = option
+        _previewProgress.value = 0f
         previewJob?.cancel()
-        previewJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        previewJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
             azanPreviewPlayer.playPreview(option)
-            kotlinx.coroutines.delay(AzanPreviewPlayer.PREVIEW_LENGTH_MS)
+            // Drive the progress bar from the player's real position rather than a
+            // guessed clock, then stop at the end.
+            while (isActive) {
+                val p = azanPreviewPlayer.previewProgress()
+                if (p == null) break                 // audio finished or was stopped
+                if (p >= 1f) break
+                _previewProgress.value = p
+                kotlinx.coroutines.delay(100)
+            }
+            _previewProgress.value = 0f
+            _previewing.value = null
             azanPreviewPlayer.stopPreview()
-            previewingOption = null
         }
     }
 
     fun stopAzanPreview() {
         previewJob?.cancel()
         previewJob = null
-        previewingOption = null
+        _previewProgress.value = 0f
+        _previewing.value = null
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { azanPreviewPlayer.stopPreview() }
     }
 }

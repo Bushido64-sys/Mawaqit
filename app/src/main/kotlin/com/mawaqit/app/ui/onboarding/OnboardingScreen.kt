@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -62,6 +63,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.MainScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
@@ -76,6 +83,10 @@ fun OnboardingScreen(
     var selectedCity by remember { mutableStateOf<String?>(null) }
     var pickedCountry by remember { mutableStateOf<String?>(null) }
     val countries by viewModel.countries.collectAsStateWithLifecycle()
+    // Which voice is playing + how far through — observed so the button can animate
+    // and a real progress bar can be shown instead of the user guessing.
+    val previewing by viewModel.previewing.collectAsStateWithLifecycle()
+    val previewProgress by viewModel.previewProgress.collectAsStateWithLifecycle()
     val countryNames = remember(countries) { countries.map { it.name } }
     val cities = remember(countries, pickedCountry) {
         countries.firstOrNull { it.name == pickedCountry }?.cities.orEmpty()
@@ -257,6 +268,15 @@ fun OnboardingScreen(
                                 .verticalScroll(rememberScrollState())
                         ) {
                             AzanType.choices.forEach { option ->
+                                val isPreviewing = previewing == option
+                                // Play -> pause toggle + progress bar, both driven by
+                                // real playback state so the user can SEE how long the
+                                // excerpt is instead of guessing (user request).
+                                val buttonScale by animateFloatAsState(
+                                    targetValue = if (isPreviewing) 1.08f else 1f,
+                                    animationSpec = tween(180),
+                                    label = "preview_scale"
+                                )
                                 Card(
                                     modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                                     border = if (azan == option) BorderStroke(2.5.dp, com.mawaqit.app.ui.theme.PrimaryBlue) else BorderStroke(1.dp, PrimaryGold.copy(alpha = 0.35f)),
@@ -272,17 +292,46 @@ fun OnboardingScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(stringResource(option.labelRes), fontWeight = FontWeight.Medium)
-                                        Box(
-                                            Modifier
-                                                .height(40.dp)
-                                                .clip(CircleShape)
-                                                .background(com.mawaqit.app.ui.theme.PrimaryBlue),
-                                            contentAlignment = Alignment.Center
+                                        // 44dp IconButton = comfortable target, circular
+                                        // ripple, 22dp icon centred inside.
+                                        IconButton(
+                                            onClick = { viewModel.previewAzan(option) },
+                                            modifier = Modifier
+                                                .size(44.dp)
+                                                .scale(buttonScale)
+                                                .background(com.mawaqit.app.ui.theme.PrimaryBlue, CircleShape)
                                         ) {
-                                            IconButton(onClick = { viewModel.previewAzan(option) }) {
-                                                Icon(Icons.Filled.PlayArrow, contentDescription = stringResource(R.string.settings_preview), tint = androidx.compose.ui.graphics.Color.White)
+                                            Crossfade(
+                                                targetState = isPreviewing,
+                                                animationSpec = tween(180),
+                                                label = "preview_toggle"
+                                            ) { playing ->
+                                                Icon(
+                                                    imageVector = if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                                    contentDescription = stringResource(if (playing) R.string.settings_pause_preview else R.string.settings_preview),
+                                                    tint = androidx.compose.ui.graphics.Color.White,
+                                                    modifier = Modifier.size(22.dp)
+                                                )
                                             }
                                         }
+                                    }
+                                    if (isPreviewing) {
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            text = stringResource(R.string.onboard_preview_playing),
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.outline
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        LinearProgressIndicator(
+                                            progress = { previewProgress },
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(4.dp)
+                                                .clip(RoundedCornerShape(50)),
+                                            color = com.mawaqit.app.ui.theme.PrimaryBlue,
+                                            trackColor = com.mawaqit.app.ui.theme.PrimaryBlue.copy(alpha = 0.18f)
+                                        )
                                     }
                                 }
                             }
